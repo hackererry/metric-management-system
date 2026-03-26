@@ -1,0 +1,22 @@
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+.pytest_cache
+.coverage
+htmlcov
+
+# 虚拟环境
+venv
+.venv
+env
+
+# 测试
+tests
+
+# IDE
+.idea
+.vscode
+
+# 日志
+*.log

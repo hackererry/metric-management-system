@@ -1,21 +1,35 @@
 /**
- * 年度指标展示卡片 - 雷达图 + 环比同比变化 + 月度数据列表
+ * 年度指标展示卡片 - 按维度分组展示overview类别指标
  */
-import React from 'react';
-import { Card, Row, Col, Table, Typography, Divider, Tag } from 'antd';
-import ReactECharts from 'echarts-for-react';
-import { RadarChartOutlined } from '@ant-design/icons';
+import React, { useEffect, useState } from 'react';
+import { Card, Row, Col, Table, Typography, Tag, Spin, message, Tooltip, Divider, Radio } from 'antd';
+import { CheckCircleOutlined, ExclamationCircleOutlined, CloseCircleOutlined, MinusOutlined } from '@ant-design/icons';
+import { ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
+import { metricApi } from '../services/api';
+import { Metric, MetricGroupedResponse, Dimension, DIMENSION_CONFIG } from '../types';
+import MonthlyLineChart from './MonthlyLineChart';
 
 const { Text } = Typography;
 
 interface AnnualMetricsCardProps {
   year: number;
+  month?: number | null;
 }
 
-// 获取当前年月
-const getCurrentYearMonth = () => {
-  const now = new Date();
-  return { year: now.getFullYear(), month: now.getMonth() + 1 };
+// 状态配置
+const STATUS_CONFIG = {
+  green: { color: '#107C10', icon: <CheckCircleOutlined />, label: '全部达标' },
+  yellow: { color: '#FFB900', icon: <ExclamationCircleOutlined />, label: '部分达标' },
+  red: { color: '#D13438', icon: <CloseCircleOutlined />, label: '全部未达标' },
+  none: { color: '#C8C6C4', icon: <MinusOutlined />, label: '暂无数据' },
+};
+
+// 维度配置
+const DIMENSION_LABELS: Record<Dimension, string> = {
+  quality: '质量',
+  efficiency: '效率',
+  experience: '体验',
+  business: '经营',
 };
 
 // 伪随机数生成器（固定种子，保证相同年份数据一致）
@@ -27,418 +41,427 @@ const createRandom = (seed: number) => {
   };
 };
 
-// 模拟年度数据
-const generateYearData = (year: number) => {
-  const random = createRandom(year * 10000); // 使用固定种子
-  const baseValue = year === 2024 ? 1 : year === 2025 ? 1.1 : 0.9;
-  const { year: currentYear, month: currentMonth } = getCurrentYearMonth();
+const AnnualMetricsCard: React.FC<AnnualMetricsCardProps> = ({ year, month }) => {
+  const [loading, setLoading] = useState(true);
+  const [metricsData, setMetricsData] = useState<Metric[]>([]);
+  // 所有维度的展示模式状态（表格/折线图）
+  const [viewModes, setViewModes] = useState<Record<Dimension, 'table' | 'chart'>>({
+    quality: 'table',
+    efficiency: 'table',
+    experience: 'table',
+    business: 'table',
+  });
 
-  // 判断某月是否有数据（当前年份的已过月份，或历史年份的所有月份）
-  const hasDataForMonth = (monthIndex: number) => {
-    if (year < currentYear) return true;
-    if (year > currentYear) return false;
-    return monthIndex < currentMonth;
+  useEffect(() => {
+    loadData();
+  }, [year]);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const data = await metricApi.getByCategoryGrouped('overview');
+      // 合并 business 和 tech 指标
+      const allMetrics = [...data.business, ...data.tech];
+      setMetricsData(allMetrics);
+    } catch (error: any) {
+      message.error(error.message || '加载年度指标失败');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // 生成月度数据
-  const generateMonthlyData = (generator: (idx: number) => number | string) => {
-    return Array.from({ length: 12 }, (_, i) =>
-      hasDataForMonth(i) ? generator(i) : null
+  // 按维度分组
+  const getMetricsByDimension = () => {
+    const grouped: Record<Dimension, Metric[]> = {
+      quality: [],
+      efficiency: [],
+      experience: [],
+      business: [],
+    };
+
+    metricsData.forEach(m => {
+      if (m.dimension && grouped[m.dimension]) {
+        grouped[m.dimension].push(m);
+      }
+    });
+
+    return grouped;
+  };
+
+  // 计算单个维度的状态
+  const getDimensionStatus = (dimensionMetrics: Metric[]): keyof typeof STATUS_CONFIG => {
+    if (dimensionMetrics.length === 0) return 'none';
+
+    const metricsWithTarget = dimensionMetrics.filter(m => m.target_value !== null);
+    if (metricsWithTarget.length === 0) return 'green';
+
+    const metCount = metricsWithTarget.filter(m => {
+      // 根据 lower_is_better 判断达标条件
+      // lower_is_better: true -> 越小越好 (value <= target_value)
+      // lower_is_better: false -> 越大越好 (value >= target_value)
+      if (m.lower_is_better) {
+        return m.value <= (m.target_value as number);
+      } else {
+        return m.value >= (m.target_value as number);
+      }
+    }).length;
+
+    if (metCount === metricsWithTarget.length) return 'green';
+    if (metCount > 0) return 'yellow';
+    return 'red';
+  };
+
+  // 计算整体状态
+  const getOverallStatus = (): keyof typeof STATUS_CONFIG => {
+    const grouped = getMetricsByDimension();
+    const dimensions = Object.keys(grouped) as Dimension[];
+
+    let allHaveMetrics = true;
+    let allGreen = true;
+    let anyYellow = false;
+    let anyRed = false;
+
+    dimensions.forEach(dim => {
+      const dimMetrics = grouped[dim];
+      if (dimMetrics.length === 0) {
+        allHaveMetrics = false;
+      } else {
+        const status = getDimensionStatus(dimMetrics);
+        if (status === 'yellow') anyYellow = true;
+        if (status === 'red') anyRed = true;
+        if (status !== 'green') allGreen = false;
+      }
+    });
+
+    if (allGreen && allHaveMetrics) return 'green';
+    if (anyRed) return 'red';
+    if (anyYellow) return 'yellow';
+    return 'none';
+  };
+
+  // 详细数据卡片 - 按维度分组展示
+  const renderDetailData = () => {
+    if (loading) {
+      return (
+        <Card title="指标详细数据" size="small">
+          <div style={{ textAlign: 'center', padding: 40 }}>
+            <Spin />
+          </div>
+        </Card>
+      );
+    }
+
+    const grouped = getMetricsByDimension();
+
+    if (metricsData.length === 0) {
+      return (
+        <Card title="指标详细数据" size="small">
+          <div style={{ textAlign: 'center', padding: 40, color: '#605E5C' }}>
+            暂无数据
+          </div>
+        </Card>
+      );
+    }
+
+    // 渲染单个指标子项（横向排列）
+    const renderMetricItem = (metric: Metric, span: number) => {
+      const momChange = metric.previous_value && metric.previous_value !== 0
+        ? ((metric.value - metric.previous_value) / metric.previous_value * 100).toFixed(1)
+        : null;
+      const isPositive = momChange ? parseFloat(momChange) > 0 : false;
+      const isGood = metric.lower_is_better ? !isPositive : isPositive;
+      const changeColor = momChange ? (isGood ? '#107C10' : '#D13438') : '#605E5C';
+
+      return (
+        <Col span={span} key={metric.id} style={{ padding: '8px 4px' }}>
+          <div style={{
+            padding: '12px 16px',
+            borderRadius: 6,
+            background: '#FAF9F8',
+            border: `1px solid #E1DFDD`,
+            textAlign: 'center',
+          }}>
+            <div style={{ marginBottom: 4 }}>
+              <Text style={{ fontSize: 13, color: '#605E5C' }}>{metric.name}</Text>
+            </div>
+            <div>
+              <Text style={{ fontSize: 20, fontWeight: 600, color: '#323130' }}>
+                {metric.data_type === 'percentage' ? `${metric.value.toFixed(1)}%` : metric.value.toLocaleString()}
+              </Text>
+              <Text style={{ fontSize: 12, color: '#605E5C', marginLeft: 4 }}>{metric.unit || ''}</Text>
+            </div>
+            {momChange !== null && (
+              <div style={{ marginTop: 4 }}>
+                <Text style={{ fontSize: 12, color: changeColor }}>
+                  {isPositive ? <ArrowUpOutlined /> : <ArrowDownOutlined />} {isPositive ? '+' : ''}{momChange}%
+                </Text>
+              </div>
+            )}
+          </div>
+        </Col>
+      );
+    };
+
+    // 渲染维度卡片
+    const renderDimensionCard = (dim: Dimension, span: number) => {
+      const dimMetrics = grouped[dim];
+      if (dimMetrics.length === 0) return null;
+
+      const dimConfig = DIMENSION_CONFIG[dim];
+      // 计算每个指标占的宽度：如果指标数<=6，则平分一行；否则每行最多6个
+      const itemSpan = dimMetrics.length <= 6 ? Math.floor(24 / dimMetrics.length) : 4;
+
+      return (
+        <Col span={span} key={dim}>
+          <Card
+            size="small"
+            title={
+              <Tag color={dimConfig.color} style={{ marginRight: 8 }}>
+                {DIMENSION_LABELS[dim]}
+              </Tag>
+            }
+            style={{ height: '100%' }}
+            bodyStyle={{ padding: 0 }}
+          >
+            <Row gutter={0}>
+              {dimMetrics.map(m => renderMetricItem(m, itemSpan))}
+            </Row>
+          </Card>
+        </Col>
+      );
+    };
+
+    return (
+      <>
+        {/* 第一行：质量和效率并排 */}
+        <Row gutter={16} style={{ marginBottom: 16 }}>
+          {renderDimensionCard('quality', 12)}
+          {renderDimensionCard('efficiency', 12)}
+        </Row>
+
+        {/* 第二行：体验单独一行 */}
+        <Row gutter={16} style={{ marginBottom: 16 }}>
+          {renderDimensionCard('experience', 24)}
+        </Row>
+
+        {/* 第三行：经营单独一行 */}
+        <Row gutter={16}>
+          {renderDimensionCard('business', 24)}
+        </Row>
+      </>
     );
   };
 
-  // 雷达图数据
-  const radarData = {
-    quality: Math.min(100, Math.round((75 + random() * 15) * baseValue)),
-    efficiency: Math.min(100, Math.round((70 + random() * 15) * baseValue)),
-    experience: Math.min(100, Math.round((80 + random() * 10) * baseValue)),
-    business: Math.min(100, Math.round((72 + random() * 13) * baseValue)),
-    operation: Math.min(100, Math.round((78 + random() * 12) * baseValue)),
-  };
+  // 月度数据表格 - 按维度拆分
+  const renderMonthlyData = () => {
+    if (loading || metricsData.length === 0) return null;
 
-  // 获取当前月份的数据索引
-  const getCurrentMonthIndex = () => {
-    if (year < currentYear) return 11; // 历史年份取12月
-    if (year > currentYear) return -1;
-    return currentMonth - 1; // 当前年份取当前月-1
-  };
+    // 生成月度数据（基于固定种子保证稳定）
+    const getMonthlyData = () => {
+      const baseValue = year === 2024 ? 1 : year === 2025 ? 1.1 : 0.9;
+      const random = createRandom(year * 1000 + 1);
+      const data: Record<number, Record<string, number>> = {};
 
-  // 质量指标
-  const qualityMetrics = [
-    {
-      name: '质量问题数',
-      unit: '个',
-      baseline: 20,
-      lowerIsBetter: true,
-      data: generateMonthlyData((i) => Math.round((15 + random() * 10) * baseValue)),
-    },
-    {
-      name: 'PRD打回次数',
-      unit: '次',
-      baseline: 10,
-      lowerIsBetter: true,
-      data: generateMonthlyData((i) => Math.round((8 + random() * 6) * baseValue)),
-    },
-  ];
-
-  // 效率指标
-  const efficiencyMetrics = [
-    {
-      name: 'PRD提交周期',
-      unit: '天',
-      baseline: 4,
-      lowerIsBetter: true,
-      data: generateMonthlyData((i) => +(3 + random() * 2).toFixed(1)),
-    },
-    {
-      name: 'RR的TTM',
-      unit: '天',
-      baseline: 7,
-      lowerIsBetter: true,
-      data: generateMonthlyData((i) => +(5 + random() * 3).toFixed(1)),
-    },
-  ];
-
-  // 体验指标
-  const experienceMetrics = [
-    {
-      name: 'NPS',
-      unit: '分',
-      baseline: 50,
-      lowerIsBetter: false,
-      data: generateMonthlyData((i) => +(45 + random() * 20).toFixed(1)),
-    },
-    {
-      name: '首页',
-      unit: 'ms',
-      baseline: 1000,
-      lowerIsBetter: true,
-      data: generateMonthlyData((i) => Math.round((800 + random() * 400) * baseValue)),
-    },
-    {
-      name: '分类页',
-      unit: 'ms',
-      baseline: 800,
-      lowerIsBetter: true,
-      data: generateMonthlyData((i) => Math.round((600 + random() * 300) * baseValue)),
-    },
-    {
-      name: '频道页',
-      unit: 'ms',
-      baseline: 900,
-      lowerIsBetter: true,
-      data: generateMonthlyData((i) => Math.round((700 + random() * 350) * baseValue)),
-    },
-    {
-      name: '搜索页',
-      unit: 'ms',
-      baseline: 600,
-      lowerIsBetter: true,
-      data: generateMonthlyData((i) => Math.round((500 + random() * 250) * baseValue)),
-    },
-    {
-      name: '商详页',
-      unit: 'ms',
-      baseline: 1200,
-      lowerIsBetter: true,
-      data: generateMonthlyData((i) => Math.round((900 + random() * 450) * baseValue)),
-    },
-    {
-      name: '车商详页',
-      unit: 'ms',
-      baseline: 1100,
-      lowerIsBetter: true,
-      data: generateMonthlyData((i) => Math.round((850 + random() * 400) * baseValue)),
-    },
-  ];
-
-  const currentMonthIdx = getCurrentMonthIndex();
-  const lastMonthIdx = currentMonthIdx > 0 ? currentMonthIdx - 1 : 11;
-  const lastYearSameMonthIdx = 11; // 去年同月
-
-  // 构建同比环比数据
-  const allMetrics = [...qualityMetrics, ...efficiencyMetrics, ...experienceMetrics];
-  const changeData = allMetrics.map(m => {
-    const currentValue = currentMonthIdx >= 0 && currentMonthIdx < 12 ? m.data[currentMonthIdx] : null;
-    const lastMonthValue = currentMonthIdx >= 0 ? m.data[lastMonthIdx] : null;
-    const lastYearValue = year > 2023 && currentMonthIdx >= 0 ? m.data[lastYearSameMonthIdx] : null;
-
-    // 环比变化
-    let momChange = null;
-    if (currentValue !== null && lastMonthValue !== null && typeof currentValue === 'number' && typeof lastMonthValue === 'number') {
-      if (lastMonthValue !== 0) {
-        momChange = ((currentValue - lastMonthValue) / lastMonthValue * 100).toFixed(1);
+      for (let month = 0; month < 12; month++) {
+        data[month] = {};
+        metricsData.forEach(m => {
+          // 根据指标值范围生成月度波动数据
+          const base = m.value / baseValue;
+          const variance = base * 0.15;
+          data[month][m.code] = Math.round((base + (random() - 0.5) * variance) * 100) / 100;
+        });
       }
-    }
-
-    // 同比变化
-    let yoyChange = null;
-    if (currentValue !== null && lastYearValue !== null && typeof currentValue === 'number' && typeof lastYearValue === 'number') {
-      if (lastYearValue !== 0) {
-        yoyChange = ((currentValue - lastYearValue) / lastYearValue * 100).toFixed(1);
-      }
-    }
-
-    return {
-      name: m.name,
-      unit: m.unit,
-      currentValue,
-      momChange,
-      yoyChange,
-      lowerIsBetter: m.lowerIsBetter,
+      return data;
     };
-  });
 
-  return { radarData, qualityMetrics, efficiencyMetrics, experienceMetrics, changeData, currentMonthIdx };
-};
+    const monthlyData = getMonthlyData();
+    const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
 
-const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+    // 获取当前月份索引
+    const currentMonth = new Date().getMonth();
+    const isCurrentYear = year === new Date().getFullYear();
 
-const AnnualMetricsCard: React.FC<AnnualMetricsCardProps> = ({ year }) => {
-  const yearData = generateYearData(year);
+    // 按维度分组
+    const metricsByDimension = getMetricsByDimension();
 
-  // 雷达图配置
-  const radarOption = {
-    tooltip: {
-      trigger: 'item',
-    },
-    radar: {
-      indicator: [
-        { name: `质量\n${yearData.radarData.quality}分`, max: 100 },
-        { name: `效率\n${yearData.radarData.efficiency}分`, max: 100 },
-        { name: `体验\n${yearData.radarData.experience}分`, max: 100 },
-        { name: `经营\n${yearData.radarData.business}分`, max: 100 },
-        { name: `运作\n${yearData.radarData.operation}分`, max: 100 },
-      ],
-      center: ['50%', '55%'],
-      radius: '65%',
-      axisName: {
-        color: '#333',
-        fontSize: 12,
-        fontWeight: 500,
-      },
-    },
-    series: [
-      {
-        type: 'radar',
-        data: [
-          {
-            value: [
-              yearData.radarData.quality,
-              yearData.radarData.efficiency,
-              yearData.radarData.experience,
-              yearData.radarData.business,
-              yearData.radarData.operation,
-            ],
-            name: '综合评分',
-            areaStyle: {
-              color: 'rgba(24, 144, 255, 0.3)',
-            },
-            lineStyle: {
-              color: '#1890ff',
-              width: 2,
-            },
-            itemStyle: {
-              color: '#1890ff',
-            },
-          },
-        ],
-      },
-    ],
-  };
-
-  // 环比同比表格列 - 转置后的版本
-  const getChangeColumns = () => {
-    // 将指标数据转为列
-    return [
-      {
-        title: '',
-        dataIndex: 'type',
-        key: 'type',
-        width: 80,
-        fixed: 'left' as const,
-        render: (text: string) => <Text strong>{text}</Text>,
-      },
-      ...yearData.changeData.map((m, idx) => ({
-        title: m.name,
-        key: `metric_${idx}`,
-        width: 80,
-        render: (_: any, record: any) => {
-          const value = record.values[idx];
-          if (value === null || value === '-') {
-            return <Text style={{ color: '#bfbfbf' }}>-</Text>;
-          }
-          if (typeof value === 'object') {
-            // 包含样式的对象
-            return value;
-          }
-          return value;
-        },
-      })),
-    ];
-  };
-
-  // 构建转置后的数据
-  const getTransposedData = () => {
-    const currentMonthLabel = yearData.currentMonthIdx >= 0 ? months[yearData.currentMonthIdx] : '-';
-
-    return [
-      {
-        type: `当前月(${currentMonthLabel})`,
-        values: yearData.changeData.map(m => {
-          if (m.currentValue === null) return null;
-          return <Text strong>{m.currentValue}{m.unit}</Text>;
-        }),
-      },
-      {
-        type: '环比变化',
-        values: yearData.changeData.map(m => {
-          if (m.momChange === null) return null;
-          const value = parseFloat(m.momChange);
-          const isPositive = value > 0;
-          const isGood = m.lowerIsBetter ? value < 0 : value > 0;
-          const color = isGood ? '#52c41a' : '#ff4d4f';
-          return (
-            <Text style={{ color, fontWeight: value !== 0 ? 600 : 400 }}>
-              {isPositive ? '+' : ''}{m.momChange}%
-            </Text>
-          );
-        }),
-      },
-      {
-        type: '同比变化',
-        values: yearData.changeData.map(m => {
-          if (m.yoyChange === null) return null;
-          const value = parseFloat(m.yoyChange);
-          const isPositive = value > 0;
-          const isGood = m.lowerIsBetter ? value < 0 : value > 0;
-          const color = isGood ? '#52c41a' : '#ff4d4f';
-          return (
-            <Text style={{ color, fontWeight: value !== 0 ? 600 : 400 }}>
-              {isPositive ? '+' : ''}{m.yoyChange}%
-            </Text>
-          );
-        }),
-      },
-    ];
-  };
-
-  // 月度数据表格列
-  const getMonthColumns = () => {
-    return [
+    // 生成单个维度表格的列定义
+    const getColumnsByDimension = (dimension: Dimension) => [
       {
         title: '指标名称',
         dataIndex: 'name',
         key: 'name',
         fixed: 'left' as const,
         width: 100,
+        ellipsis: true,
       },
       {
-        title: '基准值',
-        key: 'baseline',
-        width: 70,
-        render: (_: any, record: any) => (
-          <Text style={{ fontSize: 11, color: '#1890ff', fontWeight: 500 }}>
-            {record.baseline}{record.unit}
-          </Text>
-        ),
+        title: '目标值',
+        dataIndex: 'target_value',
+        key: 'target_value',
+        width: 65,
+        render: (target: number | null, record: Metric) => {
+          if (!target) return '-';
+          const displayValue = record.unit
+            ? `${target.toLocaleString()} ${record.unit}`
+            : target.toLocaleString();
+          return <Text style={{ fontSize: 10 }}>{displayValue}</Text>;
+        },
       },
-      ...months.map((m, i) => ({
+      ...months.map((m, idx) => ({
         title: m,
-        key: `month_${i}`,
+        key: `month_${idx}`,
         width: 60,
-        render: (_: any, record: any) => {
-          const value = record.data[i];
-          if (value === null) {
-            return <Text style={{ fontSize: 11, color: '#bfbfbf' }}>-</Text>;
+        render: (_: any, record: Metric) => {
+          // 未来月份或当前月份之后的月份显示-
+          if (isCurrentYear && idx > currentMonth) {
+            return <Text style={{ color: '#C8C6C4', fontSize: 10 }}>-</Text>;
           }
-          // 判断是否超过基准值（数值越大越差）
-          const isExceeded = value > record.baseline;
-          return (
-            <Text style={{ fontSize: 11, color: isExceeded ? '#ff4d4f' : 'inherit', fontWeight: isExceeded ? 600 : 400 }}>
-              {value}{record.unit}
-            </Text>
-          );
+          const value = monthlyData[idx]?.[record.code];
+          if (value === undefined) return <Text style={{ color: '#C8C6C4', fontSize: 10 }}>-</Text>;
+          // 判断是否达标
+          const isMet = record.target_value
+            ? record.lower_is_better
+              ? value <= record.target_value
+              : value >= record.target_value
+            : true;
+          const displayValue = record.unit ? `${value} ${record.unit}` : value;
+          return <Text style={{ fontSize: 10, color: isMet ? '#323130' : '#D13438', fontWeight: isMet ? 'normal' : 600 }}>{displayValue}</Text>;
         },
       })),
     ];
+
+    // 渲染单个维度的月度数据表格
+    const renderDimensionMonthlyTable = (dim: Dimension) => {
+      const dimMetrics = metricsByDimension[dim];
+      if (dimMetrics.length === 0) return null;
+
+      const dimConfig = DIMENSION_CONFIG[dim];
+      const currentViewMode = viewModes[dim];
+
+      return (
+        <Card
+          key={dim}
+          size="small"
+          title={
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Tag color={dimConfig.color} style={{ marginRight: 8 }}>
+                {DIMENSION_LABELS[dim]}
+              </Tag>
+              <Radio.Group
+                value={currentViewMode}
+                onChange={e => setViewModes(prev => ({ ...prev, [dim]: e.target.value }))}
+                size="small"
+                buttonStyle="solid"
+              >
+                <Radio.Button value="table">表格</Radio.Button>
+                <Radio.Button value="chart">折线图</Radio.Button>
+              </Radio.Group>
+            </div>
+          }
+          style={{ marginBottom: 12 }}
+        >
+          {currentViewMode === 'table' ? (
+            <Table
+              columns={getColumnsByDimension(dim)}
+              dataSource={dimMetrics.map(m => ({ ...m, key: m.id }))}
+              pagination={false}
+              size="small"
+              scroll={{ x: 850 }}
+            />
+          ) : (
+            <MonthlyLineChart
+              metrics={dimMetrics}
+              monthlyData={monthlyData}
+              year={year}
+              dimension={dim}
+            />
+          )}
+        </Card>
+      );
+    };
+
+    return (
+      <div style={{ marginTop: 24 }}>
+        <Divider orientation="left" plain>月度数据</Divider>
+        {renderDimensionMonthlyTable('quality')}
+        {renderDimensionMonthlyTable('efficiency')}
+        {renderDimensionMonthlyTable('experience')}
+        {renderDimensionMonthlyTable('business')}
+      </div>
+    );
   };
 
-  // 渲染指标区块
-  const renderMetricSection = (
-    title: string,
-    color: string,
-    metrics: any[]
-  ) => (
-    <div style={{ marginBottom: 12 }}>
-      <Divider orientation="left" style={{ margin: '10px 0' }}>
-        <Tag color={color} style={{ fontSize: 12, padding: '1px 6px' }}>{title}</Tag>
-      </Divider>
-      <Table
-        columns={getMonthColumns()}
-        dataSource={metrics.map((m, idx) => ({ ...m, key: idx }))}
-        pagination={false}
-        size="small"
-        scroll={{ x: 900 }}
-        bordered
-      />
-    </div>
-  );
+  if (loading) {
+    return (
+      <Card
+        title={`${year}年${month ? month + '月' : '度'}指标展示`}
+        style={{ marginBottom: 16 }}
+      >
+        <div style={{ textAlign: 'center', padding: 40 }}>
+          <Spin size="large" />
+        </div>
+      </Card>
+    );
+  }
+
+  // 获取各维度状态用于标题栏展示
+  const getDimensionStatusCircles = () => {
+    const grouped = getMetricsByDimension();
+
+    return (
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+        {(Object.keys(DIMENSION_CONFIG) as Dimension[]).map(dim => {
+          const dimMetrics = grouped[dim];
+          const dimStatus = getDimensionStatus(dimMetrics);
+          const dimStatusInfo = STATUS_CONFIG[dimStatus];
+
+          return (
+            <Tooltip key={dim} title={dimStatusInfo.label}>
+              <div style={{
+                width: 36,
+                height: 36,
+                borderRadius: '50%',
+                background: dimStatusInfo.color,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+                fontSize: 10,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}>
+                {DIMENSION_LABELS[dim]}
+              </div>
+            </Tooltip>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <Card
       title={
-        <span>
-          <RadarChartOutlined style={{ color: '#1890ff', marginRight: 8 }} />
-          {year}年度指标展示
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <span style={{ marginRight: 48 }}>{`${year}年${month ? month + '月' : '度'}指标展示`}</span>
+          {getDimensionStatusCircles()}
+        </div>
       }
       style={{ marginBottom: 16 }}
     >
-      <Row gutter={24}>
-        {/* 左侧：雷达图 */}
-        <Col xs={24} md={6}>
-          <ReactECharts
-            option={radarOption}
-            style={{ height: 280 }}
-            opts={{ renderer: 'svg' }}
-          />
-        </Col>
-
-        {/* 右侧：环比同比变化 */}
-        <Col xs={24} md={18}>
-          <Table
-            columns={getChangeColumns()}
-            dataSource={getTransposedData().map((m, idx) => ({ ...m, key: idx }))}
-            pagination={false}
-            size="small"
-            scroll={{ x: 800 }}
-            bordered
-            title={() => (
-              <Text strong style={{ fontSize: 12 }}>
-                指标环比/同比变化
-                {yearData.currentMonthIdx >= 0 && (
-                  <Text type="secondary" style={{ fontWeight: 400, marginLeft: 8 }}>
-                    (对比 {year > 2023 ? `${year - 1}年` : ''}{yearData.currentMonthIdx >= 0 ? months[yearData.currentMonthIdx] : ''})
-                  </Text>
-                )}
-              </Text>
-            )}
-          />
+      {/* 详细数据 */}
+      <Row gutter={16}>
+        <Col xs={24}>
+          {renderDetailData()}
         </Col>
       </Row>
 
-      {/* 下方：月度数据列表 */}
-      <div style={{ marginTop: 16 }}>
-        {/* 质量指标 */}
-        {renderMetricSection('质量指标', 'blue', yearData.qualityMetrics)}
-
-        {/* 效率指标 */}
-        {renderMetricSection('效率指标', 'green', yearData.efficiencyMetrics)}
-
-        {/* 体验指标 */}
-        {renderMetricSection('体验指标', 'orange', yearData.experienceMetrics)}
-      </div>
+      {/* 月度数据 */}
+      <Row gutter={16}>
+        <Col xs={24}>
+          {renderMonthlyData()}
+        </Col>
+      </Row>
     </Card>
   );
 };

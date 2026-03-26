@@ -8,12 +8,9 @@ import {
   DashboardOutlined,
   TableOutlined,
   BarChartOutlined,
-  FolderOutlined,
 } from '@ant-design/icons';
 import Dashboard from './pages/Dashboard';
 import MetricManagement from './pages/MetricManagement';
-import ProjectPage from './pages/ProjectPage';
-import ProjectDetailPage from './pages/ProjectDetailPage';
 import './App.css';
 
 const { Header, Content, Sider } = Layout;
@@ -31,11 +28,6 @@ const App: React.FC = () => {
       label: <Link to="/">数据看板</Link>,
     },
     {
-      key: '/projects',
-      icon: <FolderOutlined />,
-      label: <Link to="/projects">项目专题</Link>,
-    },
-    {
       key: '/management',
       icon: <TableOutlined />,
       label: <Link to="/management">指标管理</Link>,
@@ -46,18 +38,8 @@ const App: React.FC = () => {
     <ConfigProvider
       theme={{
         token: {
-          colorPrimary: '#0078D4',
-          colorSuccess: '#107C10',
-          colorWarning: '#FFB900',
-          colorError: '#D13438',
-          colorInfo: '#0078D4',
-          borderRadius: 6,
-          fontFamily: "'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif",
-          colorBgContainer: '#FFFFFF',
-          colorBgLayout: '#F5F5F5',
-          colorText: '#323130',
-          colorTextSecondary: '#605E5C',
-          colorBorder: '#E1DFDD',
+          colorPrimary: '#1890ff',
+          borderRadius: 4,
         },
       }}
     >
@@ -69,9 +51,7 @@ const App: React.FC = () => {
           onCollapse={setCollapsed}
           theme="light"
           style={{
-            boxShadow: '2px 0 8px rgba(0, 0, 0, 0.06)',
-            background: '#FFFFFF',
-            borderRight: '1px solid #E1DFDD',
+            boxShadow: '2px 0 8px rgba(0,0,0,0.05)',
           }}
         >
           <div
@@ -80,13 +60,12 @@ const App: React.FC = () => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              borderBottom: '1px solid #E1DFDD',
-              background: '#0078D4',
+              borderBottom: '1px solid #f0f0f0',
             }}
           >
-            <BarChartOutlined style={{ fontSize: 24, color: '#FFFFFF' }} />
+            <BarChartOutlined style={{ fontSize: 24, color: '#1890ff' }} />
             {!collapsed && (
-              <Title level={4} style={{ margin: '0 0 0 12px', color: '#FFFFFF', fontWeight: 500 }}>
+              <Title level={4} style={{ margin: '0 0 0 8px', color: '#1890ff' }}>
                 产品运营平台
               </Title>
             )}
@@ -99,25 +78,22 @@ const App: React.FC = () => {
           />
         </Sider>
 
-        <Layout style={{ background: '#F5F5F5' }}>
+        <Layout>
           {/* 头部 */}
           <Header
             style={{
-              background: '#0078D4',
-              padding: '0 32px',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+              background: '#fff',
+              padding: '0 24px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              height: 56,
-              lineHeight: '56px',
             }}
           >
-            <Title level={4} style={{ margin: 0, color: '#FFFFFF', fontWeight: 500 }}>
-              {location.pathname === '/' ? '数据看板' :
-                location.pathname.startsWith('/projects') ? '项目专题' : '指标管理'}
+            <Title level={4} style={{ margin: 0 }}>
+              {location.pathname === '/' ? '数据看板' : '指标管理'}
             </Title>
-            <span style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 14 }}>产品运营平台 v1.0</span>
+            <span style={{ color: '#8c8c8c' }}>产品运营平台 v1.0</span>
           </Header>
 
           {/* 内容区 */}
@@ -125,16 +101,13 @@ const App: React.FC = () => {
             style={{
               margin: '24px',
               padding: '24px',
-              background: '#FFFFFF',
+              background: '#fff',
               borderRadius: '8px',
-              minHeight: 'calc(100vh - 104px)',
-              boxShadow: '0 1.6px 3.6px rgba(0, 0, 0, 0.06), 0 3.2px 7.2px rgba(0, 0, 0, 0.08)',
+              minHeight: 'calc(100vh - 112px)',
             }}
           >
             <Routes>
               <Route path="/" element={<Dashboard />} />
-              <Route path="/projects" element={<ProjectPage />} />
-              <Route path="/projects/:id" element={<ProjectDetailPage />} />
               <Route path="/management" element={<MetricManagement />} />
             </Routes>
           </Content>

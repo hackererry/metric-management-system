@@ -13,7 +13,7 @@ import {
   Col,
   message,
 } from 'antd';
-import { Metric, MetricFormData, CATEGORY_CONFIG, DATA_TYPE_CONFIG, METRIC_TYPE_CONFIG, Category, DataType, Trend, MetricType } from '../types';
+import { Metric, MetricFormData, CATEGORY_CONFIG, DATA_TYPE_CONFIG, METRIC_TYPE_CONFIG, DIMENSION_CONFIG, Category, DataType, Trend, MetricType, Dimension } from '../types';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -44,9 +44,12 @@ const MetricForm: React.FC<MetricFormProps> = ({
           category: metric.category,
           metric_type: metric.metric_type || 'business',
           data_type: metric.data_type,
+          dimension: metric.dimension,
+          lower_is_better: metric.lower_is_better !== undefined ? metric.lower_is_better : true,
           unit: metric.unit || '',
           value: metric.value,
           target_value: metric.target_value,
+          challenge_value: metric.challenge_value,
           previous_value: metric.previous_value,
           trend: metric.trend,
           description: metric.description || '',
@@ -54,7 +57,7 @@ const MetricForm: React.FC<MetricFormProps> = ({
         });
       } else {
         form.resetFields();
-        form.setFieldsValue({ is_active: true, metric_type: 'business' });
+        form.setFieldsValue({ is_active: true, metric_type: 'business', lower_is_better: true });
       }
     }
   }, [visible, metric, form]);
@@ -151,6 +154,47 @@ const MetricForm: React.FC<MetricFormProps> = ({
         <Row gutter={16}>
           <Col span={12}>
             <Form.Item
+              name="dimension"
+              label="维度"
+              extra="仅年度指标(总览)需要选择维度"
+            >
+              <Select placeholder="请选择维度" allowClear>
+                {Object.entries(DIMENSION_CONFIG).map(([key, config]) => (
+                  <Option key={key} value={key}>
+                    <span style={{ color: config.color }}>●</span> {config.label}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item
+              name="lower_is_better"
+              label="达标条件"
+            >
+              <Select placeholder="请选择达标条件">
+                <Option value={true}>
+                  <span style={{ color: '#52c41a' }}>↓ 越小越好</span>
+                </Option>
+                <Option value={false}>
+                  <span style={{ color: '#1890ff' }}>↑ 越大越好</span>
+                </Option>
+              </Select>
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item name="unit" label="单位">
+              <Input placeholder="如: 人、万元、%" />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item
               name="data_type"
               label="数据类型"
               rules={[{ required: true, message: '请选择数据类型' }]}
@@ -164,26 +208,26 @@ const MetricForm: React.FC<MetricFormProps> = ({
               </Select>
             </Form.Item>
           </Col>
-          <Col span={12}>
-            <Form.Item name="unit" label="单位">
-              <Input placeholder="如: 人、万元、%" />
-            </Form.Item>
-          </Col>
         </Row>
 
         <Row gutter={16}>
-          <Col span={12}>
+          <Col span={8}>
             <Form.Item
               name="value"
-              label="当前值"
-              rules={[{ required: true, message: '请输入当前值' }]}
+              label="实际值"
+              rules={[{ required: true, message: '请输入实际值' }]}
             >
-              <InputNumber style={{ width: '100%' }} placeholder="当前值" />
+              <InputNumber style={{ width: '100%' }} placeholder="实际值" />
             </Form.Item>
           </Col>
-          <Col span={12}>
-            <Form.Item name="target_value" label="目标值">
-              <InputNumber style={{ width: '100%' }} placeholder="目标值" />
+          <Col span={8}>
+            <Form.Item name="target_value" label="达标值">
+              <InputNumber style={{ width: '100%' }} placeholder="达标值" />
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item name="challenge_value" label="挑战值">
+              <InputNumber style={{ width: '100%' }} placeholder="挑战值（可选）" />
             </Form.Item>
           </Col>
         </Row>

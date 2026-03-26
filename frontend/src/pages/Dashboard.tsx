@@ -6,8 +6,6 @@ import { Row, Col, Card, Spin, message, Divider, Table, Tag, Typography, Empty, 
 import {
   BarChartOutlined,
   CodeOutlined,
-  CheckCircleOutlined,
-  ExclamationCircleOutlined,
   CalendarOutlined,
 } from '@ant-design/icons';
 import { Metric, Category, METRIC_TYPE_CONFIG, MetricGroupedResponse, MetricType } from '../types';
@@ -20,15 +18,16 @@ const { Option } = Select;
 
 // 产品团队配置（移除总览）
 const TEAM_CONFIG: Record<string, { label: string; color: string }> = {
-  product_a: { label: '导购产品团队', color: '#52c41a' },
-  product_b: { label: '交易产品团队', color: '#faad14' },
-  product_c: { label: '智选车产品团队', color: '#722ed1' },
-  product_d: { label: '公告产品团队', color: '#1890ff' },
+  product_a: { label: '导购产品团队', color: '#107C10' },
+  product_b: { label: '交易产品团队', color: '#FFB900' },
+  product_c: { label: '智选车产品团队', color: '#5C2D91' },
+  product_d: { label: '公告产品团队', color: '#0078D4' },
 };
 
 const Dashboard: React.FC = () => {
-  const [year, setYear] = useState(2025);
-  const [month, setMonth] = useState<number | null>(null);
+  const currentMonth = new Date().getMonth() + 1;
+  const [year, setYear] = useState(2026);
+  const [month, setMonth] = useState<number | null>(currentMonth);
   const [allMetrics, setAllMetrics] = useState<Record<Category, MetricGroupedResponse>>({
     overview: { business: [], tech: [] },
     product_a: { business: [], tech: [] },
@@ -100,21 +99,12 @@ const Dashboard: React.FC = () => {
   const getTrendTag = (trend: string | null) => {
     if (!trend) return '-';
     const config: Record<string, { color: string; label: string; icon: string }> = {
-      up: { color: 'green', label: '上升', icon: '↑' },
-      down: { color: 'red', label: '下降', icon: '↓' },
-      stable: { color: 'default', label: '持平', icon: '→' },
+      up: { color: '#107C10', label: '上升', icon: '↑' },
+      down: { color: '#D13438', label: '下降', icon: '↓' },
+      stable: { color: '#605E5C', label: '持平', icon: '→' },
     };
     const c = config[trend];
     return <Tag color={c.color}>{c.icon} {c.label}</Tag>;
-  };
-
-  // 获取状态标签
-  const getStatusTag = (metric: Metric) => {
-    if (!metric.target_value) return <Tag color="default">无目标</Tag>;
-    if (metric.value >= metric.target_value) {
-      return <Tag color="success">达标</Tag>;
-    }
-    return <Tag color="error">未达标</Tag>;
   };
 
   // 指标列表列定义
@@ -123,34 +113,31 @@ const Dashboard: React.FC = () => {
       title: '指标名称',
       dataIndex: 'name',
       key: 'name',
-      width: 200,
-      render: (text: string, record: Metric) => (
-        <span>
-          {text}
-          {record.description && (
-            <Text type="secondary" style={{ fontSize: 12, marginLeft: 4 }}>
-              ({record.description.slice(0, 15)}...)
-            </Text>
-          )}
-        </span>
-      ),
+      width: 150,
     },
     {
-      title: '当前值',
+      title: '指标定义',
+      dataIndex: 'description',
+      key: 'description',
+      width: 200,
+      render: (text: string | null) => text || '-',
+    },
+    {
+      title: '实际值',
       dataIndex: 'value',
       key: 'value',
-      width: 150,
+      width: 120,
       render: (_: any, record: Metric) => (
-        <Text strong style={{ color: record.target_value && record.value < record.target_value ? '#ff4d4f' : '#52c41a' }}>
+        <Text strong style={{ color: record.target_value && record.value < record.target_value ? '#D13438' : '#107C10' }}>
           {formatValue(record)}
         </Text>
       ),
     },
     {
-      title: '目标值',
+      title: '达标值',
       dataIndex: 'target_value',
       key: 'target_value',
-      width: 120,
+      width: 100,
       render: (_: any, record: Metric) => {
         if (!record.target_value) return '-';
         return record.unit
@@ -159,14 +146,15 @@ const Dashboard: React.FC = () => {
       },
     },
     {
-      title: '完成率',
-      key: 'completion',
+      title: '挑战值',
+      dataIndex: 'challenge_value',
+      key: 'challenge_value',
       width: 100,
       render: (_: any, record: Metric) => {
-        if (!record.target_value) return '-';
-        const rate = ((record.value / record.target_value) * 100).toFixed(1);
-        const color = parseFloat(rate) >= 100 ? '#52c41a' : '#ff4d4f';
-        return <Text style={{ color }}>{rate}%</Text>;
+        if (!record.challenge_value) return '-';
+        return record.unit
+          ? `${record.challenge_value.toLocaleString()} ${record.unit}`
+          : record.challenge_value.toLocaleString();
       },
     },
     {
@@ -175,12 +163,6 @@ const Dashboard: React.FC = () => {
       key: 'trend',
       width: 80,
       render: (trend: string) => getTrendTag(trend),
-    },
-    {
-      title: '状态',
-      key: 'status',
-      width: 80,
-      render: (_: any, record: Metric) => getStatusTag(record),
     },
   ];
 
@@ -205,28 +187,6 @@ const Dashboard: React.FC = () => {
           <CalendarOutlined style={{ marginRight: 6, color: '#8c8c8c' }} />
           <Select
             value={year}
-            onChange={setYear}
-            style={{ width: 100 }}
-          >
-            <Option value={2023}>2023年</Option>
-            <Option value={2024}>2024年</Option>
-            <Option value={2025}>2025年</Option>
-            <Option value={2026}>2026年</Option>
-          </Select>
-        </div>
-      </div>
-
-      {/* 年度指标展示卡片 */}
-      <AnnualMetricsCard year={year} />
-
-      {/* 产品团队指标标题和筛选 */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, marginTop: 16 }}>
-        <Title level={5} style={{ margin: 0 }}>
-          产品团队指标
-        </Title>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Select
-            value={year}
             onChange={(val) => {
               setYear(val);
               setMonth(null);
@@ -241,7 +201,7 @@ const Dashboard: React.FC = () => {
           <Select
             value={month}
             onChange={setMonth}
-            style={{ width: 80 }}
+            style={{ width: 80, marginLeft: 8 }}
             allowClear
             placeholder="全部"
           >
@@ -261,89 +221,137 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* 产品团队雷达图卡片 */}
-      <Row gutter={[16, 16]}>
-        {Object.entries(TEAM_CONFIG).map(([key, config]) => {
-          const isSelected = selectedTeam === key;
+      {/* 年度指标展示卡片 */}
+      <AnnualMetricsCard year={year} month={month} />
 
-          return (
-            <Col xs={24} sm={12} lg={6} key={key}>
-              <ProductTeamRadarCard
-                teamKey={key}
-                label={config.label}
-                color={config.color}
-                year={year}
-                month={month}
-                isSelected={isSelected}
-                onClick={() => setSelectedTeam(isSelected ? null : key)}
-              />
-            </Col>
-          );
-        })}
-      </Row>
+      {/* 产品团队指标区域 - 统一卡片包裹 */}
+      <Card
+        title={
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Title level={5} style={{ margin: 0 }}>
+              产品团队指标
+            </Title>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Select
+                value={year}
+                onChange={(val) => {
+                  setYear(val);
+                  setMonth(currentMonth);
+                }}
+                style={{ width: 100 }}
+              >
+                <Option value={2023}>2023年</Option>
+                <Option value={2024}>2024年</Option>
+                <Option value={2025}>2025年</Option>
+                <Option value={2026}>2026年</Option>
+              </Select>
+              <Select
+                value={month}
+                onChange={setMonth}
+                style={{ width: 80 }}
+              >
+                <Option value={1}>1月</Option>
+                <Option value={2}>2月</Option>
+                <Option value={3}>3月</Option>
+                <Option value={4}>4月</Option>
+                <Option value={5}>5月</Option>
+                <Option value={6}>6月</Option>
+                <Option value={7}>7月</Option>
+                <Option value={8}>8月</Option>
+                <Option value={9}>9月</Option>
+                <Option value={10}>10月</Option>
+                <Option value={11}>11月</Option>
+                <Option value={12}>12月</Option>
+              </Select>
+            </div>
+          </div>
+        }
+        style={{ marginBottom: 16 }}
+      >
+        {/* 产品团队雷达图卡片 */}
+        <Row gutter={[16, 16]}>
+          {Object.entries(TEAM_CONFIG).map(([key, config]) => {
+            const isSelected = selectedTeam === key;
 
-      {/* 详细指标列表 */}
-      {selectedTeam && selectedMetrics && (
-        <div style={{ marginTop: 24 }}>
-          <Divider orientation="left">
-            <span style={{ color: TEAM_CONFIG[selectedTeam].color, fontWeight: 600 }}>
-              {TEAM_CONFIG[selectedTeam].label} - 详细指标
-            </span>
-          </Divider>
+            return (
+              <Col xs={24} sm={12} lg={6} key={key}>
+                <ProductTeamRadarCard
+                  teamKey={key}
+                  label={config.label}
+                  color={config.color}
+                  year={year}
+                  month={month}
+                  isSelected={isSelected}
+                  onClick={() => setSelectedTeam(isSelected ? null : key)}
+                />
+              </Col>
+            );
+          })}
+        </Row>
 
-          {/* 业务指标列表 */}
-          <Card
-            title={
-              <span>
-                <BarChartOutlined style={{ color: METRIC_TYPE_CONFIG.business.color, marginRight: 8 }} />
-                业务指标 ({selectedMetrics.business.length}个)
+        {/* 详细指标列表 - 在卡片内显示 */}
+        {selectedTeam && selectedMetrics && (
+          <div style={{ marginTop: 24 }}>
+            <Divider orientation="left">
+              <span style={{ color: TEAM_CONFIG[selectedTeam].color, fontWeight: 600 }}>
+                {TEAM_CONFIG[selectedTeam].label} - 详细指标
               </span>
-            }
-            style={{ marginBottom: 16 }}
-          >
-            {selectedMetrics.business.length > 0 ? (
-              <Table
-                columns={getColumns('business')}
-                dataSource={selectedMetrics.business}
-                rowKey="id"
-                pagination={false}
-                size="small"
-              />
-            ) : (
-              <Empty description="暂无业务指标" image={Empty.PRESENTED_IMAGE_SIMPLE} />
-            )}
-          </Card>
+            </Divider>
 
-          {/* 研发指标列表 */}
-          <Card
-            title={
-              <span>
-                <CodeOutlined style={{ color: METRIC_TYPE_CONFIG.tech.color, marginRight: 8 }} />
-                研发指标 ({selectedMetrics.tech.length}个)
-              </span>
-            }
-          >
-            {selectedMetrics.tech.length > 0 ? (
-              <Table
-                columns={getColumns('tech')}
-                dataSource={selectedMetrics.tech}
-                rowKey="id"
-                pagination={false}
-                size="small"
-              />
-            ) : (
-              <Empty description="暂无研发指标" image={Empty.PRESENTED_IMAGE_SIMPLE} />
-            )}
-          </Card>
-        </div>
-      )}
+            {/* 业务指标列表 */}
+            <Card
+              title={
+                <span>
+                  <BarChartOutlined style={{ color: METRIC_TYPE_CONFIG.business.color, marginRight: 8 }} />
+                  业务指标 ({selectedMetrics.business.length}个)
+                </span>
+              }
+              style={{ marginBottom: 16 }}
+            >
+              {selectedMetrics.business.length > 0 ? (
+                <Table
+                  columns={getColumns('business')}
+                  dataSource={selectedMetrics.business}
+                  rowKey="id"
+                  pagination={false}
+                  size="small"
+                />
+              ) : (
+                <Empty description="暂无业务指标" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+              )}
+            </Card>
 
-      {/* 未选择提示 */}
-      {!selectedTeam && (
-        <div style={{ marginTop: 24, textAlign: 'center', color: '#8c8c8c' }}>
-          <Text type="secondary">点击上方产品团队卡片查看详细指标</Text>
-        </div>
-      )}
+            {/* 研发指标列表 */}
+            <Card
+              title={
+                <span>
+                  <CodeOutlined style={{ color: METRIC_TYPE_CONFIG.tech.color, marginRight: 8 }} />
+                  研发指标 ({selectedMetrics.tech.length}个)
+                </span>
+              }
+            >
+              {selectedMetrics.tech.length > 0 ? (
+                <Table
+                  columns={getColumns('tech')}
+                  dataSource={selectedMetrics.tech}
+                  rowKey="id"
+                  pagination={false}
+                  size="small"
+                />
+              ) : (
+                <Empty description="暂无研发指标" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+              )}
+            </Card>
+          </div>
+        )}
+
+        {/* 未选择提示 */}
+        {!selectedTeam && (
+          <div style={{ marginTop: 24, textAlign: 'center', color: '#8c8c8c' }}>
+            <Text type="secondary">点击上方产品团队卡片查看详细指标</Text>
+          </div>
+        )}
+      </Card>
     </div>
   );
 };

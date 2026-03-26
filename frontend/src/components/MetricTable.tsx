@@ -159,7 +159,7 @@ const MetricTable: React.FC = () => {
       width: 100,
       render: (category: Category) => {
         const config = CATEGORY_CONFIG[category];
-        return <Tag color={config.color}>{config.label}</Tag>;
+        return <Tag color={config.color} style={{ borderRadius: 4 }}>{config.label}</Tag>;
       },
     },
     {
@@ -169,7 +169,7 @@ const MetricTable: React.FC = () => {
       width: 100,
       render: (metricType: MetricType) => {
         const config = METRIC_TYPE_CONFIG[metricType];
-        return <Tag color={config.color}>{config.label}</Tag>;
+        return <Tag color={config.color} style={{ borderRadius: 4 }}>{config.label}</Tag>;
       },
     },
     {
@@ -219,7 +219,7 @@ const MetricTable: React.FC = () => {
         if (!trend) return '-';
         const config = TREND_CONFIG[trend as keyof typeof TREND_CONFIG];
         return (
-          <Tag color={config.color}>
+          <Tag color={config.color} style={{ borderRadius: 4 }}>
             {config.icon} {config.label}
           </Tag>
         );
@@ -235,6 +235,7 @@ const MetricTable: React.FC = () => {
           checked={active}
           onChange={() => handleToggleStatus(record)}
           size="small"
+          style={{ backgroundColor: active ? '#107C10' : '#C8C6C4' }}
         />
       ),
     },

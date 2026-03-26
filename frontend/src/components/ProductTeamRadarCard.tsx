@@ -90,9 +90,24 @@ const ProductTeamRadarCard: React.FC<ProductTeamRadarCardProps> = ({
       center: ['50%', '55%'],
       radius: '60%',
       axisName: {
-        color: '#333',
+        color: '#323130',
         fontSize: 11,
         fontWeight: 500,
+      },
+      splitLine: {
+        lineStyle: {
+          color: '#E1DFDD',
+        },
+      },
+      splitArea: {
+        areaStyle: {
+          color: ['#FAF9F8', '#FFFFFF'],
+        },
+      },
+      axisLine: {
+        lineStyle: {
+          color: '#E1DFDD',
+        },
       },
     },
     series: [
@@ -145,12 +160,13 @@ const ProductTeamRadarCard: React.FC<ProductTeamRadarCardProps> = ({
       style={{
         height: '100%',
         cursor: 'pointer',
-        border: isSelected ? `2px solid ${color}` : '1px solid #f0f0f0',
-        boxShadow: isSelected ? `0 2px 8px ${color}40` : 'none',
-        transition: 'all 0.3s',
+        border: isSelected ? `2px solid ${color}` : '1px solid #E1DFDD',
+        boxShadow: isSelected ? `0 4px 12px ${color}30` : '0 1.6px 3.6px rgba(0, 0, 0, 0.04), 0 3.2px 7.2px rgba(0, 0, 0, 0.06)',
+        transition: 'all 0.2s ease',
+        borderRadius: 8,
       }}
       styles={{
-        body: { padding: 12 }
+        body: { padding: 16 }
       }}
       onClick={onClick}
       hoverable
@@ -174,8 +190,8 @@ const ProductTeamRadarCard: React.FC<ProductTeamRadarCardProps> = ({
           <Text type="secondary">-</Text>
         ) : (
           <>
-            <Text type="secondary">综合得分：</Text>
-            <Text strong style={{ fontSize: 18, color }}>{totalScore}分</Text>
+            <Text style={{ color: '#605E5C' }}>综合得分：</Text>
+            <Text strong style={{ fontSize: 20, color, fontWeight: 600 }}>{totalScore}分</Text>
           </>
         )}
       </div>

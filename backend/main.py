@@ -3,7 +3,7 @@ FastAPI主应用 - 产品运营平台后端
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import router
+from routers import router, project_router
 from database import init_test_data
 import uvicorn
 
@@ -52,6 +52,7 @@ app.add_middleware(
 
 # 注册路由
 app.include_router(router)
+app.include_router(project_router)
 
 
 @app.on_event("startup")

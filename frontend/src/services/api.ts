@@ -2,7 +2,21 @@
  * API服务 - 与后端交互
  */
 import axios from 'axios';
-import { Metric, MetricFormData, MetricListResponse, MetricGroupedResponse, CategoryStats, Category, MetricType } from '../types';
+import {
+  Metric,
+  MetricFormData,
+  MetricListResponse,
+  MetricGroupedResponse,
+  CategoryStats,
+  Category,
+  MetricType,
+  Project,
+  ProjectFormData,
+  ProjectListResponse,
+  ProjectMetric,
+  ProjectMetricFormData,
+  ProjectStats
+} from '../types';
 
 const api = axios.create({
   baseURL: 'http://localhost:8000/api',
@@ -99,6 +113,84 @@ export const metricApi = {
   batchUpdate: async (updates: Record<string, number>): Promise<number> => {
     const response = await api.post<{ message: string }>('/metrics/batch-update', updates);
     return response.status;
+  },
+};
+
+// 项目 API 服务
+export const projectApi = {
+  /**
+   * 获取项目列表
+   */
+  getList: async (params?: {
+    skip?: number;
+    limit?: number;
+    status?: string;
+    keyword?: string;
+  }): Promise<ProjectListResponse> => {
+    const response = await api.get<ProjectListResponse>('/projects/', { params });
+    return response.data;
+  },
+
+  /**
+   * 获取单个项目
+   */
+  getById: async (id: number): Promise<Project> => {
+    const response = await api.get<Project>(`/projects/${id}`);
+    return response.data;
+  },
+
+  /**
+   * 创建项目
+   */
+  create: async (data: ProjectFormData): Promise<Project> => {
+    const response = await api.post<Project>('/projects/', data);
+    return response.data;
+  },
+
+  /**
+   * 更新项目
+   */
+  update: async (id: number, data: Partial<ProjectFormData>): Promise<Project> => {
+    const response = await api.put<Project>(`/projects/${id}`, data);
+    return response.data;
+  },
+
+  /**
+   * 删除项目
+   */
+  delete: async (id: number): Promise<void> => {
+    await api.delete(`/projects/${id}`);
+  },
+
+  /**
+   * 获取项目下所有指标
+   */
+  getMetrics: async (projectId: number): Promise<ProjectMetric[]> => {
+    const response = await api.get<{ data: ProjectMetric[] }>(`/projects/${projectId}/metrics`);
+    return response.data.data;
+  },
+
+  /**
+   * 添加指标到项目
+   */
+  addMetric: async (projectId: number, data: ProjectMetricFormData): Promise<ProjectMetric> => {
+    const response = await api.post<ProjectMetric>(`/projects/${projectId}/metrics`, data);
+    return response.data;
+  },
+
+  /**
+   * 从项目移除指标
+   */
+  removeMetric: async (projectId: number, metricId: number): Promise<void> => {
+    await api.delete(`/projects/${projectId}/metrics/${metricId}`);
+  },
+
+  /**
+   * 获取项目统计
+   */
+  getStats: async (projectId: number): Promise<ProjectStats> => {
+    const response = await api.get<ProjectStats>(`/projects/${projectId}/stats`);
+    return response.data;
   },
 };
 

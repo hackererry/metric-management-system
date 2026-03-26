@@ -1,0 +1,26 @@
+# 依赖
+node_modules
+
+# 构建
+build
+
+# 测试
+__tests__
+*.test.*
+*.spec.*
+coverage
+
+# IDE
+.idea
+.vscode
+
+# 日志
+*.log
+npm-debug.log*
+
+# 环境配置
+.env
+.env.*
+
+# 备份
+.backup
