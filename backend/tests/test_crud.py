@@ -2,9 +2,9 @@
 CRUD操作测试
 """
 import pytest
-from crud import MetricCRUD
-from schemas import MetricCreate, MetricUpdate
-from database import Metric
+from app.crud import MetricCRUD
+from app.schemas import MetricCreate, MetricUpdate
+from app.models import Metric
 
 
 class TestMetricCRUDCreate:
@@ -26,6 +26,7 @@ class TestMetricCRUDCreate:
             code="return_test",
             category="overview",
             data_type="number",
+            dimension="quality",
             value=10.0
         )
         result = MetricCRUD.create(db_session, metric_data)
@@ -60,13 +61,13 @@ class TestMetricCRUDGet:
 
     def test_get_list_no_filter(self, db_session):
         """测试无筛选条件获取列表"""
-        # 创建多个指标
         for i in range(5):
             metric = Metric(
                 name=f"指标{i}",
                 code=f"metric_{i}",
                 category="overview",
                 data_type="number",
+                dimension="quality",
                 value=i * 10.0
             )
             db_session.add(metric)
@@ -84,6 +85,7 @@ class TestMetricCRUDGet:
                 code=f"pagination_{i}",
                 category="overview",
                 data_type="number",
+                dimension="quality",
                 value=i * 10.0
             )
             db_session.add(metric)
@@ -106,6 +108,7 @@ class TestMetricCRUDGet:
                 code=f"{cat}_code",
                 category=cat,
                 data_type="number",
+                dimension="quality",
                 value=10.0
             )
             db_session.add(metric)
@@ -115,37 +118,12 @@ class TestMetricCRUDGet:
         assert total == 1
         assert items[0].category == "overview"
 
-    def test_get_list_by_metric_type(self, db_session):
-        """测试按指标类型筛选"""
-        metric1 = Metric(
-            name="业务指标",
-            code="business_metric",
-            category="overview",
-            metric_type="business",
-            data_type="number",
-            value=10.0
-        )
-        metric2 = Metric(
-            name="研发指标",
-            code="tech_metric",
-            category="overview",
-            metric_type="tech",
-            data_type="number",
-            value=10.0
-        )
-        db_session.add_all([metric1, metric2])
-        db_session.commit()
-
-        items, total = MetricCRUD.get_list(db_session, metric_type="business")
-        assert total == 1
-        assert items[0].metric_type == "business"
-
     def test_get_list_by_keyword(self, db_session):
         """测试关键词搜索"""
         metrics = [
-            Metric(name="搜索测试一", code="search_1", category="overview", data_type="number", value=10.0),
-            Metric(name="搜索测试二", code="search_2", category="overview", data_type="number", value=20.0),
-            Metric(name="其他指标", code="other", category="overview", data_type="number", value=30.0),
+            Metric(name="搜索测试一", code="search_1", category="overview", data_type="number", dimension="quality", value=10.0),
+            Metric(name="搜索测试二", code="search_2", category="overview", data_type="number", dimension="quality", value=20.0),
+            Metric(name="其他指标", code="other", category="overview", data_type="number", dimension="quality", value=30.0),
         ]
         db_session.add_all(metrics)
         db_session.commit()
@@ -155,8 +133,8 @@ class TestMetricCRUDGet:
 
     def test_get_list_by_is_active(self, db_session):
         """测试按状态筛选"""
-        active = Metric(name="激活", code="active_metric", category="overview", data_type="number", value=10.0, is_active=True)
-        inactive = Metric(name="未激活", code="inactive_metric", category="overview", data_type="number", value=10.0, is_active=False)
+        active = Metric(name="激活", code="active_metric", category="overview", data_type="number", dimension="quality", value=10.0, is_active=True)
+        inactive = Metric(name="未激活", code="inactive_metric", category="overview", data_type="number", dimension="quality", value=10.0, is_active=False)
         db_session.add_all([active, inactive])
         db_session.commit()
 
@@ -215,8 +193,8 @@ class TestMetricCRUDBatch:
     def test_batch_update_values(self, db_session):
         """测试批量更新值"""
         metrics = [
-            Metric(name="指标1", code="batch_1", category="overview", data_type="number", value=10.0),
-            Metric(name="指标2", code="batch_2", category="overview", data_type="number", value=20.0),
+            Metric(name="指标1", code="batch_1", category="overview", data_type="number", dimension="quality", value=10.0),
+            Metric(name="指标2", code="batch_2", category="overview", data_type="number", dimension="quality", value=20.0),
         ]
         db_session.add_all(metrics)
         db_session.commit()
@@ -238,6 +216,7 @@ class TestMetricCRUDBatch:
             code="trend_test",
             category="overview",
             data_type="number",
+            dimension="quality",
             value=50.0,
             previous_value=100.0
         )
@@ -252,9 +231,9 @@ class TestMetricCRUDBatch:
     def test_get_category_stats(self, db_session):
         """测试获取分类统计"""
         metrics = [
-            Metric(name="指标1", code="stat_1", category="overview", data_type="number", value=10.0, is_active=True),
-            Metric(name="指标2", code="stat_2", category="overview", data_type="number", value=20.0, is_active=False),
-            Metric(name="指标3", code="stat_3", category="product_a", data_type="number", value=30.0, is_active=True),
+            Metric(name="指标1", code="stat_1", category="overview", data_type="number", dimension="quality", value=10.0, is_active=True),
+            Metric(name="指标2", code="stat_2", category="overview", data_type="number", dimension="quality", value=20.0, is_active=False),
+            Metric(name="指标3", code="stat_3", category="product_a", data_type="number", dimension="efficiency", value=30.0, is_active=True),
         ]
         db_session.add_all(metrics)
         db_session.commit()
@@ -264,3 +243,25 @@ class TestMetricCRUDBatch:
         assert stats["overview"]["total"] == 2
         assert stats["overview"]["active"] == 1
         assert stats["product_a"]["total"] == 1
+
+    def test_get_by_category_grouped(self, db_session):
+        """测试按分类获取维度分组指标"""
+        metrics = [
+            Metric(name="质量指标", code="dim_quality", category="overview", data_type="number", dimension="quality", value=10.0, is_active=True),
+            Metric(name="效率指标", code="dim_efficiency", category="overview", data_type="number", dimension="efficiency", value=20.0, is_active=True),
+            Metric(name="体验指标", code="dim_experience", category="overview", data_type="number", dimension="experience", value=30.0, is_active=True),
+            Metric(name="经营指标", code="dim_business", category="overview", data_type="number", dimension="business", value=40.0, is_active=True),
+            Metric(name="运作指标", code="dim_operation", category="overview", data_type="number", dimension="operation", value=50.0, is_active=True),
+        ]
+        db_session.add_all(metrics)
+        db_session.commit()
+
+        grouped = MetricCRUD.get_by_category_grouped(db_session, "overview")
+
+        assert "quality" in grouped
+        assert "efficiency" in grouped
+        assert "experience" in grouped
+        assert "business" in grouped
+        assert "operation" in grouped
+        assert len(grouped["quality"]) == 1
+        assert grouped["quality"][0].code == "dim_quality"

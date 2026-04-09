@@ -4,7 +4,7 @@
 import pytest
 from datetime import datetime
 
-from database import Metric
+from app.models import Metric, MetricHistory
 
 
 class TestMetricModel:
@@ -16,7 +16,6 @@ class TestMetricModel:
             name="测试指标",
             code="test_create_metric",
             category="overview",
-            metric_type="business",
             data_type="number",
             dimension="quality",
             lower_is_better=True,
@@ -35,7 +34,7 @@ class TestMetricModel:
         assert metric.name == "测试指标"
         assert metric.code == "test_create_metric"
         assert metric.category == "overview"
-        assert metric.metric_type == "business"
+        assert metric.dimension == "quality"
         assert metric.data_type == "number"
         assert metric.value == 100.0
         assert metric.created_at is not None
@@ -48,12 +47,12 @@ class TestMetricModel:
             code="test_defaults",
             category="overview",
             data_type="number",
+            dimension="quality",
             value=10.0
         )
         db_session.add(metric)
         db_session.commit()
 
-        assert metric.metric_type == "business"
         assert metric.lower_is_better is True
         assert metric.is_active is True
 
@@ -64,6 +63,7 @@ class TestMetricModel:
             code="unique_code",
             category="overview",
             data_type="number",
+            dimension="quality",
             value=10.0
         )
         db_session.add(metric1)
@@ -74,6 +74,7 @@ class TestMetricModel:
             code="unique_code",
             category="product_a",
             data_type="number",
+            dimension="efficiency",
             value=20.0
         )
         db_session.add(metric2)
@@ -88,6 +89,7 @@ class TestMetricModel:
             code="test_timestamps",
             category="overview",
             data_type="number",
+            dimension="quality",
             value=10.0
         )
         db_session.add(metric)
@@ -114,3 +116,78 @@ class TestMetricModel:
 
         deleted_metric = db_session.query(Metric).filter(Metric.id == metric_id).first()
         assert deleted_metric is None
+
+
+class TestMetricHistoryModel:
+    """MetricHistory模型测试"""
+
+    def test_create_history(self, db_session, sample_metric):
+        """测试创建历史记录"""
+        history = MetricHistory(
+            metric_id=sample_metric.id,
+            year=2026,
+            month=3,
+            value=45.0
+        )
+        db_session.add(history)
+        db_session.commit()
+
+        assert history.id is not None
+        assert history.metric_id == sample_metric.id
+        assert history.year == 2026
+        assert history.month == 3
+        assert history.value == 45.0
+        assert history.created_at is not None
+
+    def test_history_unique_constraint(self, db_session, sample_metric):
+        """测试历史记录唯一约束（同一指标同年月）"""
+        history1 = MetricHistory(
+            metric_id=sample_metric.id,
+            year=2026,
+            month=3,
+            value=45.0
+        )
+        db_session.add(history1)
+        db_session.commit()
+
+        history2 = MetricHistory(
+            metric_id=sample_metric.id,
+            year=2026,
+            month=3,
+            value=50.0
+        )
+        db_session.add(history2)
+
+        with pytest.raises(Exception):
+            db_session.commit()
+
+    def test_history_cascade_delete(self, db_session):
+        """测试指标删除时级联删除历史（SQLite不强制外键，仅验证结构）"""
+        metric = Metric(
+            name="级联测试",
+            code="cascade_test",
+            category="overview",
+            data_type="number",
+            dimension="quality",
+            value=10.0
+        )
+        db_session.add(metric)
+        db_session.commit()
+
+        history = MetricHistory(
+            metric_id=metric.id,
+            year=2026,
+            month=1,
+            value=9.0
+        )
+        db_session.add(history)
+        db_session.commit()
+
+        # 手动删除历史记录，然后删除指标
+        history_id = history.id
+        db_session.delete(history)
+        db_session.delete(metric)
+        db_session.commit()
+
+        deleted = db_session.query(MetricHistory).filter(MetricHistory.id == history_id).first()
+        assert deleted is None

@@ -2,7 +2,7 @@
  * 年度指标展示卡片 - 按维度分组展示overview类别指标
  */
 import React, { useEffect, useState } from 'react';
-import { Card, Row, Col, Table, Typography, Tag, Spin, message, Tooltip, Divider, Radio } from 'antd';
+import { Card, Row, Col, Table, Typography, Tag, Spin, message, Tooltip, Radio, Collapse } from 'antd';
 import { CheckCircleOutlined, ExclamationCircleOutlined, CloseCircleOutlined, MinusOutlined } from '@ant-design/icons';
 import { ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
 import { metricApi } from '../services/api';
@@ -30,6 +30,7 @@ const DIMENSION_LABELS: Record<Dimension, string> = {
   efficiency: '效率',
   experience: '体验',
   business: '经营',
+  operation: '运作',
 };
 
 // 伪随机数生成器（固定种子，保证相同年份数据一致）
@@ -50,6 +51,7 @@ const AnnualMetricsCard: React.FC<AnnualMetricsCardProps> = ({ year, month }) =>
     efficiency: 'table',
     experience: 'table',
     business: 'table',
+    operation: 'table',
   });
 
   useEffect(() => {
@@ -60,8 +62,8 @@ const AnnualMetricsCard: React.FC<AnnualMetricsCardProps> = ({ year, month }) =>
     setLoading(true);
     try {
       const data = await metricApi.getByCategoryGrouped('overview');
-      // 合并 business 和 tech 指标
-      const allMetrics = [...data.business, ...data.tech];
+      // 合并所有维度指标
+      const allMetrics = Object.values(data).flat();
       setMetricsData(allMetrics);
     } catch (error: any) {
       message.error(error.message || '加载年度指标失败');
@@ -77,6 +79,7 @@ const AnnualMetricsCard: React.FC<AnnualMetricsCardProps> = ({ year, month }) =>
       efficiency: [],
       experience: [],
       business: [],
+      operation: [],
     };
 
     metricsData.forEach(m => {
@@ -382,11 +385,22 @@ const AnnualMetricsCard: React.FC<AnnualMetricsCardProps> = ({ year, month }) =>
 
     return (
       <div style={{ marginTop: 24 }}>
-        <Divider orientation="left" plain>月度数据</Divider>
-        {renderDimensionMonthlyTable('quality')}
-        {renderDimensionMonthlyTable('efficiency')}
-        {renderDimensionMonthlyTable('experience')}
-        {renderDimensionMonthlyTable('business')}
+        <Collapse
+          defaultActiveKey={[]}
+          items={[{
+            key: 'monthly',
+            label: <span style={{ fontWeight: 500 }}>月度数据</span>,
+            children: (
+              <>
+                {renderDimensionMonthlyTable('quality')}
+                {renderDimensionMonthlyTable('efficiency')}
+                {renderDimensionMonthlyTable('experience')}
+                {renderDimensionMonthlyTable('business')}
+                {renderDimensionMonthlyTable('operation')}
+              </>
+            ),
+          }]}
+        />
       </div>
     );
   };
@@ -394,7 +408,7 @@ const AnnualMetricsCard: React.FC<AnnualMetricsCardProps> = ({ year, month }) =>
   if (loading) {
     return (
       <Card
-        title={`${year}年${month ? month + '月' : '度'}指标展示`}
+        title={`产品部指标 - ${year}年${month ? month + '月' : '度'}`}
         style={{ marginBottom: 16 }}
       >
         <div style={{ textAlign: 'center', padding: 40 }}>
@@ -410,7 +424,7 @@ const AnnualMetricsCard: React.FC<AnnualMetricsCardProps> = ({ year, month }) =>
 
     return (
       <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-        {(Object.keys(DIMENSION_CONFIG) as Dimension[]).map(dim => {
+        {(['quality', 'efficiency', 'experience', 'business'] as Dimension[]).map(dim => {
           const dimMetrics = grouped[dim];
           const dimStatus = getDimensionStatus(dimMetrics);
           const dimStatusInfo = STATUS_CONFIG[dimStatus];
@@ -443,7 +457,7 @@ const AnnualMetricsCard: React.FC<AnnualMetricsCardProps> = ({ year, month }) =>
     <Card
       title={
         <div style={{ display: 'flex', alignItems: 'center' }}>
-          <span style={{ marginRight: 48 }}>{`${year}年${month ? month + '月' : '度'}指标展示`}</span>
+          <span style={{ marginRight: 48 }}>{`产品部指标 - ${year}年${month ? month + '月' : '度'}`}</span>
           {getDimensionStatusCircles()}
         </div>
       }

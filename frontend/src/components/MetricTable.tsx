@@ -26,11 +26,11 @@ import {
 import {
   Metric,
   Category,
-  MetricType,
+  Dimension,
   CATEGORY_CONFIG,
   DATA_TYPE_CONFIG,
   TREND_CONFIG,
-  METRIC_TYPE_CONFIG,
+  DIMENSION_CONFIG,
   MetricFormData,
 } from '../types';
 import { metricApi } from '../services/api';
@@ -47,7 +47,7 @@ const MetricTable: React.FC = () => {
   const [pageSize, setPageSize] = useState(10);
   const [keyword, setKeyword] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<Category | undefined>();
-  const [metricTypeFilter, setMetricTypeFilter] = useState<MetricType | undefined>();
+  const [dimensionFilter, setDimensionFilter] = useState<Dimension | undefined>();
   const [statusFilter, setStatusFilter] = useState<boolean | undefined>();
   const [formVisible, setFormVisible] = useState(false);
   const [currentMetric, setCurrentMetric] = useState<Metric | null>(null);
@@ -61,11 +61,15 @@ const MetricTable: React.FC = () => {
         limit: pageSize,
         keyword: keyword || undefined,
         category: categoryFilter,
-        metric_type: metricTypeFilter,
         is_active: statusFilter,
       });
-      setMetrics(response.items);
-      setTotal(response.total);
+      // 前端按维度筛选（后端不提供维度筛选参数）
+      let items = response.items;
+      if (dimensionFilter) {
+        items = items.filter(m => m.dimension === dimensionFilter);
+      }
+      setMetrics(items);
+      setTotal(dimensionFilter ? items.length : response.total);
     } catch (error: any) {
       message.error(error.message || '加载数据失败');
     } finally {
@@ -75,7 +79,7 @@ const MetricTable: React.FC = () => {
 
   useEffect(() => {
     loadData();
-  }, [page, pageSize, keyword, categoryFilter, metricTypeFilter, statusFilter]);
+  }, [page, pageSize, keyword, categoryFilter, dimensionFilter, statusFilter]);
 
   // 删除指标
   const handleDelete = async (id: number) => {
@@ -163,13 +167,13 @@ const MetricTable: React.FC = () => {
       },
     },
     {
-      title: '指标类型',
-      dataIndex: 'metric_type',
-      key: 'metric_type',
-      width: 100,
-      render: (metricType: MetricType) => {
-        const config = METRIC_TYPE_CONFIG[metricType];
-        return <Tag color={config.color} style={{ borderRadius: 4 }}>{config.label}</Tag>;
+      title: '维度',
+      dataIndex: 'dimension',
+      key: 'dimension',
+      width: 80,
+      render: (dimension: Dimension) => {
+        const config = DIMENSION_CONFIG[dimension];
+        return config ? <Tag color={config.color} style={{ borderRadius: 4 }}>{config.label}</Tag> : '-';
       },
     },
     {
@@ -296,12 +300,12 @@ const MetricTable: React.FC = () => {
         </Col>
         <Col span={4}>
           <Select
-            placeholder="指标类型"
+            placeholder="维度筛选"
             allowClear
             style={{ width: '100%' }}
-            onChange={setMetricTypeFilter}
+            onChange={setDimensionFilter}
           >
-            {Object.entries(METRIC_TYPE_CONFIG).map(([key, config]) => (
+            {Object.entries(DIMENSION_CONFIG).map(([key, config]) => (
               <Option key={key} value={key}>
                 <span style={{ color: config.color }}>●</span> {config.label}
               </Option>

@@ -8,12 +8,9 @@ import {
   DashboardOutlined,
   TableOutlined,
   BarChartOutlined,
-  FolderOutlined,
 } from '@ant-design/icons';
 import Dashboard from './pages/Dashboard';
 import MetricManagement from './pages/MetricManagement';
-import ProjectPage from './pages/ProjectPage';
-import ProjectDetailPage from './pages/ProjectDetailPage';
 import './App.css';
 
 const { Header, Content, Sider } = Layout;
@@ -29,11 +26,6 @@ const App: React.FC = () => {
       key: '/',
       icon: <DashboardOutlined />,
       label: <Link to="/">数据看板</Link>,
-    },
-    {
-      key: '/projects',
-      icon: <FolderOutlined />,
-      label: <Link to="/projects">项目专题</Link>,
     },
     {
       key: '/management',
@@ -114,8 +106,7 @@ const App: React.FC = () => {
             }}
           >
             <Title level={4} style={{ margin: 0, color: '#FFFFFF', fontWeight: 500 }}>
-              {location.pathname === '/' ? '数据看板' :
-                location.pathname.startsWith('/projects') ? '项目专题' : '指标管理'}
+              {location.pathname === '/' ? '数据看板' : '指标管理'}
             </Title>
             <span style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 14 }}>产品运营平台 v1.0</span>
           </Header>
@@ -133,8 +124,6 @@ const App: React.FC = () => {
           >
             <Routes>
               <Route path="/" element={<Dashboard />} />
-              <Route path="/projects" element={<ProjectPage />} />
-              <Route path="/projects/:id" element={<ProjectDetailPage />} />
               <Route path="/management" element={<MetricManagement />} />
             </Routes>
           </Content>
