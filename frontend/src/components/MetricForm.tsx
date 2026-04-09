@@ -13,7 +13,7 @@ import {
   Col,
   message,
 } from 'antd';
-import { Metric, MetricFormData, CATEGORY_CONFIG, DATA_TYPE_CONFIG, METRIC_TYPE_CONFIG, DIMENSION_CONFIG, Category, DataType, Trend, MetricType, Dimension } from '../types';
+import { Metric, MetricFormData, CATEGORY_CONFIG, DATA_TYPE_CONFIG, DIMENSION_CONFIG } from '../types';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -42,7 +42,6 @@ const MetricForm: React.FC<MetricFormProps> = ({
           name: metric.name,
           code: metric.code,
           category: metric.category,
-          metric_type: metric.metric_type || 'business',
           data_type: metric.data_type,
           dimension: metric.dimension,
           lower_is_better: metric.lower_is_better !== undefined ? metric.lower_is_better : true,
@@ -57,7 +56,7 @@ const MetricForm: React.FC<MetricFormProps> = ({
         });
       } else {
         form.resetFields();
-        form.setFieldsValue({ is_active: true, metric_type: 'business', lower_is_better: true });
+        form.setFieldsValue({ is_active: true, lower_is_better: true });
       }
     }
   }, [visible, metric, form]);
@@ -136,12 +135,12 @@ const MetricForm: React.FC<MetricFormProps> = ({
           </Col>
           <Col span={12}>
             <Form.Item
-              name="metric_type"
-              label="指标类型"
-              rules={[{ required: true, message: '请选择指标类型' }]}
+              name="dimension"
+              label="维度"
+              rules={[{ required: true, message: '请选择维度' }]}
             >
-              <Select placeholder="请选择指标类型">
-                {Object.entries(METRIC_TYPE_CONFIG).map(([key, config]) => (
+              <Select placeholder="请选择维度">
+                {Object.entries(DIMENSION_CONFIG).map(([key, config]) => (
                   <Option key={key} value={key}>
                     <span style={{ color: config.color }}>●</span> {config.label}
                   </Option>
@@ -152,21 +151,6 @@ const MetricForm: React.FC<MetricFormProps> = ({
         </Row>
 
         <Row gutter={16}>
-          <Col span={12}>
-            <Form.Item
-              name="dimension"
-              label="维度"
-              extra="仅年度指标(总览)需要选择维度"
-            >
-              <Select placeholder="请选择维度" allowClear>
-                {Object.entries(DIMENSION_CONFIG).map(([key, config]) => (
-                  <Option key={key} value={key}>
-                    <span style={{ color: config.color }}>●</span> {config.label}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
-          </Col>
           <Col span={12}>
             <Form.Item
               name="lower_is_better"
@@ -182,9 +166,6 @@ const MetricForm: React.FC<MetricFormProps> = ({
               </Select>
             </Form.Item>
           </Col>
-        </Row>
-
-        <Row gutter={16}>
           <Col span={12}>
             <Form.Item name="unit" label="单位">
               <Input placeholder="如: 人、万元、%" />

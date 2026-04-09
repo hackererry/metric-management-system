@@ -5,14 +5,13 @@ import {
   MetricGroupedResponse,
   CategoryStats,
   Category,
-  MetricType,
   DataType,
   Trend,
   Dimension,
+  MonthlyHistoryMap,
   CATEGORY_CONFIG,
   DATA_TYPE_CONFIG,
   TREND_CONFIG,
-  METRIC_TYPE_CONFIG,
   DIMENSION_CONFIG
 } from '../types';
 
@@ -24,7 +23,6 @@ describe('types/index', () => {
         name: '测试指标',
         code: 'test_metric',
         category: 'overview',
-        metric_type: 'business',
         data_type: 'number',
         dimension: 'quality',
         lower_is_better: true,
@@ -43,6 +41,7 @@ describe('types/index', () => {
       expect(metric.id).toBe(1);
       expect(metric.name).toBe('测试指标');
       expect(metric.category).toBe('overview');
+      expect(metric.dimension).toBe('quality');
     });
 
     it('MetricFormData 应该包含创建指标所需字段', () => {
@@ -50,7 +49,6 @@ describe('types/index', () => {
         name: '表单指标',
         code: 'form_metric',
         category: 'product_a',
-        metric_type: 'tech',
         data_type: 'percentage',
         dimension: 'efficiency',
         lower_is_better: false,
@@ -63,6 +61,7 @@ describe('types/index', () => {
 
       expect(formData.name).toBe('表单指标');
       expect(formData.code).toBe('form_metric');
+      expect(formData.dimension).toBe('efficiency');
     });
 
     it('MetricListResponse 类型应该正确', () => {
@@ -75,14 +74,17 @@ describe('types/index', () => {
       expect(response.items).toEqual([]);
     });
 
-    it('MetricGroupedResponse 类型应该正确', () => {
+    it('MetricGroupedResponse 类型应该是维度分组的字典', () => {
       const response: MetricGroupedResponse = {
+        quality: [],
+        efficiency: [],
+        experience: [],
         business: [],
-        tech: []
+        operation: []
       };
 
-      expect(response.business).toEqual([]);
-      expect(response.tech).toEqual([]);
+      expect(response.quality).toEqual([]);
+      expect(response.operation).toEqual([]);
     });
 
     it('CategoryStats 类型应该包含所有分类', () => {
@@ -97,6 +99,15 @@ describe('types/index', () => {
       expect(stats.overview.total).toBe(5);
       expect(stats.product_a.active).toBe(3);
     });
+
+    it('MonthlyHistoryMap 类型应该正确', () => {
+      const history: MonthlyHistoryMap = {
+        test_metric: { 1: 100, 2: 105, 3: 98 }
+      };
+
+      expect(history.test_metric[1]).toBe(100);
+      expect(history.test_metric[3]).toBe(98);
+    });
   });
 
   describe('类型别名', () => {
@@ -104,13 +115,6 @@ describe('types/index', () => {
       const categories: Category[] = ['overview', 'product_a', 'product_b', 'product_c', 'product_d'];
       categories.forEach(cat => {
         expect(['overview', 'product_a', 'product_b', 'product_c', 'product_d']).toContain(cat);
-      });
-    });
-
-    it('MetricType 应该只允许 business 或 tech', () => {
-      const types: MetricType[] = ['business', 'tech'];
-      types.forEach(type => {
-        expect(['business', 'tech']).toContain(type);
       });
     });
 
@@ -128,10 +132,10 @@ describe('types/index', () => {
       });
     });
 
-    it('Dimension 应该只允许有效值', () => {
-      const dimensions: Dimension[] = ['quality', 'efficiency', 'experience', 'business'];
+    it('Dimension 应该包含5个维度', () => {
+      const dimensions: Dimension[] = ['quality', 'efficiency', 'experience', 'business', 'operation'];
       dimensions.forEach(dim => {
-        expect(['quality', 'efficiency', 'experience', 'business']).toContain(dim);
+        expect(['quality', 'efficiency', 'experience', 'business', 'operation']).toContain(dim);
       });
     });
   });
@@ -162,12 +166,14 @@ describe('types/index', () => {
       });
     });
 
-    it('METRIC_TYPE_CONFIG 应该包含 business 和 tech', () => {
-      expect(Object.keys(METRIC_TYPE_CONFIG)).toEqual(['business', 'tech']);
+    it('DIMENSION_CONFIG 应该包含5个维度', () => {
+      expect(Object.keys(DIMENSION_CONFIG)).toEqual(['quality', 'efficiency', 'experience', 'business', 'operation']);
     });
 
-    it('DIMENSION_CONFIG 应该包含所有维度', () => {
-      expect(Object.keys(DIMENSION_CONFIG)).toEqual(['quality', 'efficiency', 'experience', 'business']);
+    it('DIMENSION_CONFIG 应该包含运作维度', () => {
+      expect(DIMENSION_CONFIG.operation).toBeDefined();
+      expect(DIMENSION_CONFIG.operation.label).toBe('运作');
+      expect(DIMENSION_CONFIG.operation.color).toBe('#CA5010');
     });
   });
 });

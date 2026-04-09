@@ -16,7 +16,6 @@ describe('components/AnnualMetricsCard', () => {
       name: '质量问题数',
       code: 'quality_issue_count',
       category: 'overview',
-      metric_type: 'tech',
       data_type: 'number',
       dimension: 'quality',
       lower_is_better: true,
@@ -35,7 +34,6 @@ describe('components/AnnualMetricsCard', () => {
       name: 'NPS',
       code: 'nps_score',
       category: 'overview',
-      metric_type: 'business',
       data_type: 'number',
       dimension: 'experience',
       lower_is_better: false,
@@ -61,9 +59,9 @@ describe('components/AnnualMetricsCard', () => {
   });
 
   it('Dimension 类型应该只允许有效值', () => {
-    const validDimensions: Dimension[] = ['quality', 'efficiency', 'experience', 'business'];
+    const validDimensions: Dimension[] = ['quality', 'efficiency', 'experience', 'business', 'operation'];
     validDimensions.forEach(dim => {
-      expect(['quality', 'efficiency', 'experience', 'business']).toContain(dim);
+      expect(['quality', 'efficiency', 'experience', 'business', 'operation']).toContain(dim);
     });
   });
 

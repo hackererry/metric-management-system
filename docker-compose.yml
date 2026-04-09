@@ -12,6 +12,7 @@ services:
       - ./backend/metrics_final.db:/app/metrics_final.db
     environment:
       - PYTHONUNBUFFERED=1
+      - TZ=Asia/Shanghai
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -30,6 +31,8 @@ services:
       - "80:80"
     depends_on:
       - backend
+    environment:
+      - TZ=Asia/Shanghai
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/health"]

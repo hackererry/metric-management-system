@@ -4,14 +4,13 @@ Pydantic Schema测试
 import pytest
 from pydantic import ValidationError
 
-from schemas import (
+from app.schemas import (
     MetricBase,
     MetricCreate,
     MetricUpdate,
     MetricResponse,
     DataTypeEnum,
     CategoryEnum,
-    MetricTypeEnum,
     DimensionEnum,
     TrendEnum
 )
@@ -34,17 +33,13 @@ class TestEnums:
         assert CategoryEnum.PRODUCT_C.value == "product_c"
         assert CategoryEnum.PRODUCT_D.value == "product_d"
 
-    def test_metric_type_enum(self):
-        """测试指标类型枚举"""
-        assert MetricTypeEnum.BUSINESS.value == "business"
-        assert MetricTypeEnum.TECH.value == "tech"
-
     def test_dimension_enum(self):
         """测试维度枚举"""
         assert DimensionEnum.QUALITY.value == "quality"
         assert DimensionEnum.EFFICIENCY.value == "efficiency"
         assert DimensionEnum.EXPERIENCE.value == "experience"
         assert DimensionEnum.BUSINESS.value == "business"
+        assert DimensionEnum.OPERATION.value == "operation"
 
     def test_trend_enum(self):
         """测试趋势枚举"""
@@ -63,10 +58,12 @@ class TestMetricBase:
             code="test_metric",
             category=CategoryEnum.OVERVIEW,
             data_type=DataTypeEnum.NUMBER,
+            dimension=DimensionEnum.QUALITY,
             value=100.0
         )
         assert metric.name == "测试指标"
         assert metric.code == "test_metric"
+        assert metric.dimension == DimensionEnum.QUALITY
         assert metric.lower_is_better is True  # 默认值
 
     def test_code_normalization(self):
@@ -76,6 +73,7 @@ class TestMetricBase:
             code="TEST_CODE",
             category=CategoryEnum.OVERVIEW,
             data_type=DataTypeEnum.NUMBER,
+            dimension=DimensionEnum.QUALITY,
             value=100.0
         )
         assert metric.code == "test_code"
@@ -88,6 +86,7 @@ class TestMetricBase:
                 code="invalid@code!",
                 category=CategoryEnum.OVERVIEW,
                 data_type=DataTypeEnum.NUMBER,
+                dimension=DimensionEnum.QUALITY,
                 value=100.0
             )
 
@@ -98,6 +97,7 @@ class TestMetricBase:
                 code="test",
                 category=CategoryEnum.OVERVIEW,
                 data_type=DataTypeEnum.NUMBER,
+                dimension=DimensionEnum.QUALITY,
                 value=100.0
             )
 
@@ -106,6 +106,18 @@ class TestMetricBase:
         with pytest.raises(ValidationError):
             MetricBase(
                 name="x" * 101,  # 超过100字符
+                code="test",
+                category=CategoryEnum.OVERVIEW,
+                data_type=DataTypeEnum.NUMBER,
+                dimension=DimensionEnum.QUALITY,
+                value=100.0
+            )
+
+    def test_dimension_required(self):
+        """测试维度必填"""
+        with pytest.raises(ValidationError):
+            MetricBase(
+                name="测试",
                 code="test",
                 category=CategoryEnum.OVERVIEW,
                 data_type=DataTypeEnum.NUMBER,
@@ -129,10 +141,11 @@ class TestMetricCreate:
             code="min_metric",
             category=CategoryEnum.OVERVIEW,
             data_type=DataTypeEnum.NUMBER,
+            dimension=DimensionEnum.QUALITY,
             value=10.0
         )
         assert metric.name == "最小指标"
-        assert metric.metric_type == MetricTypeEnum.BUSINESS  # 默认值
+        assert metric.dimension == DimensionEnum.QUALITY
 
 
 class TestMetricUpdate:

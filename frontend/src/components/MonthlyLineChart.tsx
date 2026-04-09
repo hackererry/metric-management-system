@@ -4,13 +4,13 @@
 import React, { useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
 import { Empty } from 'antd';
-import { Metric, DIMENSION_CONFIG } from '../types';
+import { Metric, MonthlyHistoryMap, Dimension } from '../types';
 
 interface MonthlyLineChartProps {
-  metrics: Metric[];           // 指标列表
-  monthlyData: Record<number, Record<string, number>>; // 月度数据
-  year: number;                // 年份（用于判断未来月份）
-  dimension?: 'quality' | 'efficiency' | 'experience' | 'business'; // 维度
+  metrics: Metric[];
+  monthlyData: MonthlyHistoryMap;  // { metricCode: { month(1-12): value } }
+  year: number;
+  dimension?: Dimension;
 }
 
 // 预定义颜色数组
@@ -41,7 +41,8 @@ const MonthlyLineChart: React.FC<MonthlyLineChartProps> = ({
         if (isCurrentYear && monthIdx > currentMonth) {
           return null;
         }
-        const value = monthlyData[monthIdx]?.[metric.code];
+        // monthIdx 是 0-based，历史数据中月份是 1-based
+        const value = monthlyData[metric.code]?.[monthIdx + 1];
         return value !== undefined ? value : null;
       });
 

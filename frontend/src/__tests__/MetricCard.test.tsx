@@ -9,7 +9,6 @@ describe('components/MetricCard', () => {
     name: '测试指标',
     code: 'test_metric',
     category: 'overview',
-    metric_type: 'business',
     data_type: 'number',
     dimension: 'quality',
     lower_is_better: true,

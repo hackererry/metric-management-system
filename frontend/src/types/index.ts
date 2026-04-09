@@ -5,17 +5,15 @@
 export type DataType = 'number' | 'percentage' | 'trend';
 export type Category = 'overview' | 'product_a' | 'product_b' | 'product_c' | 'product_d';
 export type Trend = 'up' | 'down' | 'stable';
-export type MetricType = 'business' | 'tech';
-export type Dimension = 'quality' | 'efficiency' | 'experience' | 'business';
+export type Dimension = 'quality' | 'efficiency' | 'experience' | 'business' | 'operation';
 
 export interface Metric {
   id: number;
   name: string;
   code: string;
   category: Category;
-  metric_type: MetricType;
   data_type: DataType;
-  dimension: Dimension | null;
+  dimension: Dimension;
   lower_is_better: boolean;
   unit: string | null;
   value: number;
@@ -33,9 +31,8 @@ export interface MetricFormData {
   name: string;
   code: string;
   category: Category;
-  metric_type?: MetricType;
   data_type: DataType;
-  dimension?: Dimension;
+  dimension: Dimension;
   lower_is_better?: boolean;
   unit?: string;
   value: number;
@@ -53,8 +50,7 @@ export interface MetricListResponse {
 }
 
 export interface MetricGroupedResponse {
-  business: Metric[];
-  tech: Metric[];
+  [dimension: string]: Metric[];
 }
 
 export interface CategoryStats {
@@ -69,6 +65,11 @@ export interface ApiResponse<T = any> {
   code: number;
   message: string;
   data?: T;
+}
+
+// 月度历史数据映射: { metricCode: { month(1-12): value } }
+export interface MonthlyHistoryMap {
+  [metricCode: string]: { [month: number]: number };
 }
 
 // 分类配置 - 科技蓝主题色系
@@ -94,78 +95,11 @@ export const TREND_CONFIG: Record<Trend, { label: string; color: string; icon: s
   stable: { label: '持平', color: '#605E5C', icon: '→' },
 };
 
-// 指标类型配置
-export const METRIC_TYPE_CONFIG: Record<MetricType, { label: string; color: string }> = {
-  business: { label: '业务指标', color: '#0078D4' },
-  tech: { label: '研发指标', color: '#107C10' },
-};
-
-// 维度配置 - 用于年度指标分类
+// 维度配置
 export const DIMENSION_CONFIG: Record<Dimension, { label: string; color: string }> = {
   quality: { label: '质量', color: '#0078D4' },
   efficiency: { label: '效率', color: '#107C10' },
   experience: { label: '体验', color: '#5C2D91' },
   business: { label: '经营', color: '#004578' },
-};
-
-
-// ============ 项目专题相关类型 ============
-
-export type ProjectStatus = 'active' | 'completed' | 'archived';
-
-export interface Project {
-  id: number;
-  name: string;
-  code: string | null;
-  description: string | null;
-  status: ProjectStatus;
-  start_date: string | null;
-  end_date: string | null;
-  created_at: string;
-  updated_at: string;
-  metric_count?: number;
-  achievement_rate?: number | null;
-}
-
- export interface ProjectFormData {
-  name: string;
-  code?: string;
-  description?: string;
-  status?: ProjectStatus;
-  start_date?: string;
-  end_date?: string;
-}
-
- export interface ProjectListResponse {
-  total: number;
-  items: Project[];
-}
-
- export interface ProjectMetric {
-  id: number;
-  project_id: number;
-  metric_id: number;
-  target_value: number | null;
-  created_at: string;
-  metric?: Metric;
-  is_achieved: boolean | null;
-  achievement_rate: number | null;
-}
-
- export interface ProjectMetricFormData {
-  metric_id: number;
-  target_value?: number;
-}
-
- export interface ProjectStats {
-  total_metrics: number;
-  achieved_metrics: number;
-  achievement_rate: number;
-}
-
- // 项目状态配置
- export const PROJECT_STATUS_CONFIG: Record<ProjectStatus, { label: string; color: string }> = {
-  active: { label: '进行中', color: '#0078D4' },
-  completed: { label: '已完成', color: '#107C10' },
-  archived: { label: '已归档', color: '#605E5C' },
+  operation: { label: '运作', color: '#CA5010' },
 };

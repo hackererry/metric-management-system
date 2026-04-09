@@ -1,5 +1,5 @@
 /**
- * API服务 - 与后端交互
+ * API服务 - 与后端交互（统一 POST）
  */
 import axios from 'axios';
 import {
@@ -9,17 +9,11 @@ import {
   MetricGroupedResponse,
   CategoryStats,
   Category,
-  MetricType,
-  Project,
-  ProjectFormData,
-  ProjectListResponse,
-  ProjectMetric,
-  ProjectMetricFormData,
-  ProjectStats
+  MonthlyHistoryMap,
 } from '../types';
 
 const api = axios.create({
-  baseURL: 'http://localhost:8000/api',
+  baseURL: '/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -43,11 +37,10 @@ export const metricApi = {
     skip?: number;
     limit?: number;
     category?: Category;
-    metric_type?: MetricType;
     is_active?: boolean;
     keyword?: string;
   }): Promise<MetricListResponse> => {
-    const response = await api.get<MetricListResponse>('/metrics/', { params });
+    const response = await api.post<MetricListResponse>('/metrics/list', params || {});
     return response.data;
   },
 
@@ -55,7 +48,7 @@ export const metricApi = {
    * 获取单个指标
    */
   getById: async (id: number): Promise<Metric> => {
-    const response = await api.get<Metric>(`/metrics/${id}`);
+    const response = await api.post<Metric>('/metrics/get', { id });
     return response.data;
   },
 
@@ -63,7 +56,7 @@ export const metricApi = {
    * 创建指标
    */
   create: async (data: MetricFormData): Promise<Metric> => {
-    const response = await api.post<Metric>('/metrics/', data);
+    const response = await api.post<Metric>('/metrics/create', data);
     return response.data;
   },
 
@@ -71,7 +64,7 @@ export const metricApi = {
    * 更新指标
    */
   update: async (id: number, data: Partial<MetricFormData>): Promise<Metric> => {
-    const response = await api.put<Metric>(`/metrics/${id}`, data);
+    const response = await api.post<Metric>('/metrics/update', { id, ...data });
     return response.data;
   },
 
@@ -79,23 +72,22 @@ export const metricApi = {
    * 删除指标
    */
   delete: async (id: number): Promise<void> => {
-    await api.delete(`/metrics/${id}`);
+    await api.post('/metrics/delete', { id });
   },
 
   /**
    * 按分类获取指标
    */
-  getByCategory: async (category: Category, metricType?: MetricType): Promise<Metric[]> => {
-    const params = metricType ? { metric_type: metricType } : {};
-    const response = await api.get<Metric[]>(`/metrics/category/${category}`, { params });
+  getByCategory: async (category: Category): Promise<Metric[]> => {
+    const response = await api.post<Metric[]>('/metrics/category/query', { category });
     return response.data;
   },
 
   /**
-   * 按分类获取分组指标（业务指标/研发指标分开）
+   * 按分类获取分组指标（按维度分组）
    */
   getByCategoryGrouped: async (category: Category): Promise<MetricGroupedResponse> => {
-    const response = await api.get<MetricGroupedResponse>(`/metrics/category/${category}/grouped`);
+    const response = await api.post<MetricGroupedResponse>('/metrics/category/grouped', { category });
     return response.data;
   },
 
@@ -103,7 +95,7 @@ export const metricApi = {
    * 获取分类统计
    */
   getCategoryStats: async (): Promise<CategoryStats> => {
-    const response = await api.get<{ data: CategoryStats }>('/metrics/stats');
+    const response = await api.post<{ data: CategoryStats }>('/metrics/stats', {});
     return response.data.data;
   },
 
@@ -114,83 +106,20 @@ export const metricApi = {
     const response = await api.post<{ message: string }>('/metrics/batch-update', updates);
     return response.status;
   },
-};
 
-// 项目 API 服务
-export const projectApi = {
   /**
-   * 获取项目列表
+   * 获取分类月度历史数据
    */
-  getList: async (params?: {
-    skip?: number;
-    limit?: number;
-    status?: string;
-    keyword?: string;
-  }): Promise<ProjectListResponse> => {
-    const response = await api.get<ProjectListResponse>('/projects/', { params });
+  getMonthlyHistory: async (category: Category, year: number): Promise<MonthlyHistoryMap> => {
+    const response = await api.post<MonthlyHistoryMap>('/metrics/history/query', { category, year });
     return response.data;
   },
 
   /**
-   * 获取单个项目
+   * 批量写入月度历史
    */
-  getById: async (id: number): Promise<Project> => {
-    const response = await api.get<Project>(`/projects/${id}`);
-    return response.data;
-  },
-
-  /**
-   * 创建项目
-   */
-  create: async (data: ProjectFormData): Promise<Project> => {
-    const response = await api.post<Project>('/projects/', data);
-    return response.data;
-  },
-
-  /**
-   * 更新项目
-   */
-  update: async (id: number, data: Partial<ProjectFormData>): Promise<Project> => {
-    const response = await api.put<Project>(`/projects/${id}`, data);
-    return response.data;
-  },
-
-  /**
-   * 删除项目
-   */
-  delete: async (id: number): Promise<void> => {
-    await api.delete(`/projects/${id}`);
-  },
-
-  /**
-   * 获取项目下所有指标
-   */
-  getMetrics: async (projectId: number): Promise<ProjectMetric[]> => {
-    const response = await api.get<{ data: ProjectMetric[] }>(`/projects/${projectId}/metrics`);
-    return response.data.data;
-  },
-
-  /**
-   * 添加指标到项目
-   */
-  addMetric: async (projectId: number, data: ProjectMetricFormData): Promise<ProjectMetric> => {
-    const response = await api.post<ProjectMetric>(`/projects/${projectId}/metrics`, data);
-    return response.data;
-  },
-
-  /**
-   * 从项目移除指标
-   */
-  removeMetric: async (projectId: number, metricId: number): Promise<void> => {
-    await api.delete(`/projects/${projectId}/metrics/${metricId}`);
-  },
-
-  /**
-   * 获取项目统计
-   */
-  getStats: async (projectId: number): Promise<ProjectStats> => {
-    const response = await api.get<ProjectStats>(`/projects/${projectId}/stats`);
-    return response.data;
+  batchCreateHistory: async (records: { metric_id: number; year: number; month: number; value: number }[]): Promise<void> => {
+    await api.post('/metrics/history/batch', records);
   },
 };
 

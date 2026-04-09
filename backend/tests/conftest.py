@@ -1,27 +1,23 @@
 """
-pytest配置文件和共享fixture
+pytest 配置文件和共享 fixture
 """
 import pytest
-import sys
-import os
-
-# 添加项目根目录到Python路径
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, StaticPool
 from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
 
-from database import Base, get_db, Metric
-from main import app
+from app.database import Base, get_db
+from app.models import Metric, MetricHistory
+from app.main import app
 
 
-# 测试数据库配置 - 使用内存数据库
+# 测试数据库配置 - 使用内存数据库 + StaticPool 确保跨线程共享同一连接
 TEST_DATABASE_URL = "sqlite:///:memory:"
 
 engine = create_engine(
     TEST_DATABASE_URL,
-    connect_args={"check_same_thread": False}
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
 )
 
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -66,7 +62,6 @@ def sample_metric_data():
         "name": "测试指标",
         "code": "test_metric",
         "category": "overview",
-        "metric_type": "business",
         "data_type": "number",
         "dimension": "quality",
         "lower_is_better": True,
@@ -88,7 +83,6 @@ def sample_metric(db_session):
         name="示例指标",
         code="sample_metric",
         category="overview",
-        metric_type="business",
         data_type="number",
         dimension="quality",
         lower_is_better=True,

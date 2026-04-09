@@ -1,17 +1,17 @@
 /**
- * 看板页面 - 年度指标 + 产品团队雷达图卡片 + 详细指标列表
+ * 看板页面 - 年度指标 + 产品团队雷达图卡片 + 详细指标列表（按维度分组）
  */
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Card, Spin, message, Divider, Table, Tag, Typography, Empty, Select } from 'antd';
+import { Row, Col, Card, Spin, message, Divider, Typography, Empty, Select } from 'antd';
 import {
-  BarChartOutlined,
-  CodeOutlined,
   CalendarOutlined,
 } from '@ant-design/icons';
-import { Metric, Category, METRIC_TYPE_CONFIG, MetricGroupedResponse, MetricType } from '../types';
+import { Category, MetricGroupedResponse, Dimension, DIMENSION_CONFIG, MonthlyHistoryMap } from '../types';
 import { metricApi } from '../services/api';
 import AnnualMetricsCard from '../components/AnnualMetricsCard';
+import SpecialProjectCard from '../components/SpecialProjectCard';
 import ProductTeamRadarCard from '../components/ProductTeamRadarCard';
+import DimensionMonthlyView from '../components/DimensionMonthlyView';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -28,13 +28,8 @@ const Dashboard: React.FC = () => {
   const currentMonth = new Date().getMonth() + 1;
   const [year, setYear] = useState(2026);
   const [month, setMonth] = useState<number | null>(currentMonth);
-  const [allMetrics, setAllMetrics] = useState<Record<Category, MetricGroupedResponse>>({
-    overview: { business: [], tech: [] },
-    product_a: { business: [], tech: [] },
-    product_b: { business: [], tech: [] },
-    product_c: { business: [], tech: [] },
-    product_d: { business: [], tech: [] },
-  });
+  const [allMetrics, setAllMetrics] = useState<Partial<Record<Category, MetricGroupedResponse>>>({});
+  const [monthlyHistory, setMonthlyHistory] = useState<Partial<Record<Category, MonthlyHistoryMap>>>({});
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -43,17 +38,19 @@ const Dashboard: React.FC = () => {
     setLoading(true);
     try {
       const categories: Category[] = ['overview', 'product_a', 'product_b', 'product_c', 'product_d'];
-      const promises = categories.map(cat => metricApi.getByCategoryGrouped(cat));
-      const results = await Promise.all(promises);
+      const [groupedResults, historyResults] = await Promise.all([
+        Promise.all(categories.map(cat => metricApi.getByCategoryGrouped(cat))),
+        Promise.all(categories.map(cat => metricApi.getMonthlyHistory(cat, year))),
+      ]);
 
-      const metricsMap: Record<Category, MetricGroupedResponse> = {
-        overview: results[0],
-        product_a: results[1],
-        product_b: results[2],
-        product_c: results[3],
-        product_d: results[4],
-      };
+      const metricsMap = {} as Record<Category, MetricGroupedResponse>;
+      const historyMap = {} as Record<Category, MonthlyHistoryMap>;
+      categories.forEach((cat, idx) => {
+        metricsMap[cat] = groupedResults[idx];
+        historyMap[cat] = historyResults[idx];
+      });
       setAllMetrics(metricsMap);
+      setMonthlyHistory(historyMap);
     } catch (error: any) {
       message.error(error.message || '加载数据失败');
     } finally {
@@ -63,108 +60,26 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [year]);
 
   // 计算团队统计数据
   const getTeamStats = (category: Category) => {
     const metrics = allMetrics[category];
-    const allTeamMetrics = [...metrics.business, ...metrics.tech];
+    if (!metrics) return { totalCount: 0, normalCount: 0, abnormalCount: 0 };
 
-    const businessCount = metrics.business.length;
-    const techCount = metrics.tech.length;
+    const allTeamMetrics = Object.values(metrics).flat();
     const totalCount = allTeamMetrics.length;
 
-    // 正常指标：达标或没有目标值
     const normalCount = allTeamMetrics.filter(m =>
       !m.target_value || m.value >= m.target_value
     ).length;
 
-    // 异常指标：有目标值但未达标
     const abnormalCount = allTeamMetrics.filter(m =>
       m.target_value && m.value < m.target_value
     ).length;
 
-    return { businessCount, techCount, totalCount, normalCount, abnormalCount };
+    return { totalCount, normalCount, abnormalCount };
   };
-
-  // 格式化显示值
-  const formatValue = (metric: Metric) => {
-    if (metric.data_type === 'percentage') {
-      return `${metric.value.toFixed(1)}%`;
-    }
-    return metric.unit ? `${metric.value.toLocaleString()} ${metric.unit}` : metric.value.toLocaleString();
-  };
-
-  // 获取趋势标签
-  const getTrendTag = (trend: string | null) => {
-    if (!trend) return '-';
-    const config: Record<string, { color: string; label: string; icon: string }> = {
-      up: { color: '#107C10', label: '上升', icon: '↑' },
-      down: { color: '#D13438', label: '下降', icon: '↓' },
-      stable: { color: '#605E5C', label: '持平', icon: '→' },
-    };
-    const c = config[trend];
-    return <Tag color={c.color}>{c.icon} {c.label}</Tag>;
-  };
-
-  // 指标列表列定义
-  const getColumns = (metricType: MetricType) => [
-    {
-      title: '指标名称',
-      dataIndex: 'name',
-      key: 'name',
-      width: 150,
-    },
-    {
-      title: '指标定义',
-      dataIndex: 'description',
-      key: 'description',
-      width: 200,
-      render: (text: string | null) => text || '-',
-    },
-    {
-      title: '实际值',
-      dataIndex: 'value',
-      key: 'value',
-      width: 120,
-      render: (_: any, record: Metric) => (
-        <Text strong style={{ color: record.target_value && record.value < record.target_value ? '#D13438' : '#107C10' }}>
-          {formatValue(record)}
-        </Text>
-      ),
-    },
-    {
-      title: '达标值',
-      dataIndex: 'target_value',
-      key: 'target_value',
-      width: 100,
-      render: (_: any, record: Metric) => {
-        if (!record.target_value) return '-';
-        return record.unit
-          ? `${record.target_value.toLocaleString()} ${record.unit}`
-          : record.target_value.toLocaleString();
-      },
-    },
-    {
-      title: '挑战值',
-      dataIndex: 'challenge_value',
-      key: 'challenge_value',
-      width: 100,
-      render: (_: any, record: Metric) => {
-        if (!record.challenge_value) return '-';
-        return record.unit
-          ? `${record.challenge_value.toLocaleString()} ${record.unit}`
-          : record.challenge_value.toLocaleString();
-      },
-    },
-    {
-      title: '趋势',
-      dataIndex: 'trend',
-      key: 'trend',
-      width: 80,
-      render: (trend: string) => getTrendTag(trend),
-    },
-  ];
 
   if (loading) {
     return (
@@ -175,6 +90,7 @@ const Dashboard: React.FC = () => {
   }
 
   const selectedMetrics = selectedTeam ? allMetrics[selectedTeam as Category] : null;
+  const selectedHistory = selectedTeam ? monthlyHistory[selectedTeam as Category] : null;
 
   return (
     <div>
@@ -224,12 +140,15 @@ const Dashboard: React.FC = () => {
       {/* 年度指标展示卡片 */}
       <AnnualMetricsCard year={year} month={month} />
 
+      {/* 专项项目卡片 */}
+      <SpecialProjectCard year={year} />
+
       {/* 产品团队指标区域 - 统一卡片包裹 */}
       <Card
         title={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Title level={5} style={{ margin: 0 }}>
-              产品团队指标
+              子产品团队指标
             </Title>
             <div style={{ display: 'flex', gap: 8 }}>
               <Select
@@ -289,7 +208,7 @@ const Dashboard: React.FC = () => {
           })}
         </Row>
 
-        {/* 详细指标列表 - 在卡片内显示 */}
+        {/* 详细指标列表 - 按维度分组展示 */}
         {selectedTeam && selectedMetrics && (
           <div style={{ marginTop: 24 }}>
             <Divider orientation="left">
@@ -298,50 +217,18 @@ const Dashboard: React.FC = () => {
               </span>
             </Divider>
 
-            {/* 业务指标列表 */}
-            <Card
-              title={
-                <span>
-                  <BarChartOutlined style={{ color: METRIC_TYPE_CONFIG.business.color, marginRight: 8 }} />
-                  业务指标 ({selectedMetrics.business.length}个)
-                </span>
-              }
-              style={{ marginBottom: 16 }}
-            >
-              {selectedMetrics.business.length > 0 ? (
-                <Table
-                  columns={getColumns('business')}
-                  dataSource={selectedMetrics.business}
-                  rowKey="id"
-                  pagination={false}
-                  size="small"
+            {(Object.keys(DIMENSION_CONFIG) as Dimension[]).map(dim => {
+              const dimMetrics = selectedMetrics[dim] || [];
+              return (
+                <DimensionMonthlyView
+                  key={dim}
+                  dimension={dim}
+                  metrics={dimMetrics}
+                  monthlyData={selectedHistory || {}}
+                  year={year}
                 />
-              ) : (
-                <Empty description="暂无业务指标" image={Empty.PRESENTED_IMAGE_SIMPLE} />
-              )}
-            </Card>
-
-            {/* 研发指标列表 */}
-            <Card
-              title={
-                <span>
-                  <CodeOutlined style={{ color: METRIC_TYPE_CONFIG.tech.color, marginRight: 8 }} />
-                  研发指标 ({selectedMetrics.tech.length}个)
-                </span>
-              }
-            >
-              {selectedMetrics.tech.length > 0 ? (
-                <Table
-                  columns={getColumns('tech')}
-                  dataSource={selectedMetrics.tech}
-                  rowKey="id"
-                  pagination={false}
-                  size="small"
-                />
-              ) : (
-                <Empty description="暂无研发指标" image={Empty.PRESENTED_IMAGE_SIMPLE} />
-              )}
-            </Card>
+              );
+            })}
           </div>
         )}
 
