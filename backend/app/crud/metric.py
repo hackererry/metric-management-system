@@ -7,6 +7,7 @@ from datetime import datetime
 
 from app.models import Metric, MetricHistory
 from app.schemas import MetricCreate, MetricUpdate
+from app.crud.aggregation import AggregationCRUD
 
 
 class MetricCRUD:
@@ -15,7 +16,9 @@ class MetricCRUD:
     @staticmethod
     def create(db: Session, metric: MetricCreate) -> Metric:
         """创建新指标"""
-        db_metric = Metric(**metric.model_dump())
+        # 排除 source_configs 字段，它不是 Metric 模型的属性
+        metric_data = metric.model_dump(exclude={'source_configs'})
+        db_metric = Metric(**metric_data)
         db.add(db_metric)
         db.commit()
         db.refresh(db_metric)
@@ -74,13 +77,31 @@ class MetricCRUD:
         if not db_metric:
             return None
 
+        # 记录更新前的值，用于趋势计算
+        old_value = db_metric.value
+
         # 只更新提供的字段
         update_data = metric.model_dump(exclude_unset=True)
         for field, value in update_data.items():
             setattr(db_metric, field, value)
 
+        # 自动计算趋势（当值发生变化时）
+        if 'value' in update_data and db_metric.previous_value is None:
+            db_metric.previous_value = old_value
+            if db_metric.value > old_value:
+                db_metric.trend = "up"
+            elif db_metric.value < old_value:
+                db_metric.trend = "down"
+            else:
+                db_metric.trend = "stable"
+
         db.commit()
         db.refresh(db_metric)
+
+        # 如果是子产品类别指标，触发聚合重新计算
+        if db_metric.category != 'overview':
+            AggregationCRUD.recompute_by_source(db, metric_id)
+
         return db_metric
 
     @staticmethod
@@ -145,6 +166,8 @@ class MetricCRUD:
         now = datetime.now()
         current_year = now.year
         current_month = now.month
+        updated_source_ids = set()
+
         for code, value in updates.items():
             metric = MetricCRUD.get_by_code(db, code)
             if metric:
@@ -176,7 +199,14 @@ class MetricCRUD:
                     else:
                         metric.trend = "stable"
                 count += 1
+                updated_source_ids.add(metric.id)
+
         db.commit()
+
+        # 触发聚合更新：当子产品指标更新时，自动更新相关的产品部(overview)指标
+        for source_id in updated_source_ids:
+            AggregationCRUD.recompute_by_source(db, source_id)
+
         return count
 
 

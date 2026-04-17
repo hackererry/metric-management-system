@@ -22,6 +22,7 @@ class Metric(Base):
     challenge_value = Column(Float, nullable=True, comment="挑战值")
     previous_value = Column(Float, comment="上一周期值")
     trend = Column(String(10), comment="趋势: up/down/stable")
+    aggregation_type = Column(String(20), default="average", comment="年度汇总方式: sum(求和)/average(平均)")
     description = Column(Text, comment="指标描述")
     is_active = Column(Boolean, default=True, comment="是否启用")
     created_at = Column(DateTime, default=datetime.now, comment="创建时间")
