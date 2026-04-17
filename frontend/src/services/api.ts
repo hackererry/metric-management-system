@@ -10,6 +10,9 @@ import {
   CategoryStats,
   Category,
   MonthlyHistoryMap,
+  AggregationConfigCreate,
+  AggregationConfigResponse,
+  SourceMetricOption,
 } from '../types';
 
 const api = axios.create({
@@ -120,6 +123,59 @@ export const metricApi = {
    */
   batchCreateHistory: async (records: { metric_id: number; year: number; month: number; value: number }[]): Promise<void> => {
     await api.post('/metrics/history/batch', records);
+  },
+
+  // ============ 聚合配置 API ============
+
+  /**
+   * 创建聚合配置
+   */
+  createAggregationConfig: async (data: AggregationConfigCreate): Promise<AggregationConfigResponse> => {
+    const response = await api.post<AggregationConfigResponse>('/metrics/aggregation/config/create', data);
+    return response.data;
+  },
+
+  /**
+   * 获取聚合配置列表
+   */
+  getAggregationConfigs: async (targetMetricId?: number): Promise<AggregationConfigResponse[]> => {
+    const response = await api.post<{ data: AggregationConfigResponse[] }>('/metrics/aggregation/config/list', {}, {
+      params: targetMetricId ? { target_metric_id: targetMetricId } : undefined,
+    });
+    return response.data.data || [];
+  },
+
+  /**
+   * 删除聚合配置
+   */
+  deleteAggregationConfig: async (id: number): Promise<void> => {
+    await api.post('/metrics/aggregation/config/delete', { id });
+  },
+
+  /**
+   * 计算聚合值
+   */
+  computeAggregatedValue: async (metricId: number): Promise<number> => {
+    const response = await api.post<{ data: { value: number } }>('/metrics/aggregation/compute', { metric_id: metricId });
+    return response.data.data.value;
+  },
+
+  /**
+   * 重新计算所有聚合指标
+   */
+  recomputeAllAggregations: async (): Promise<number> => {
+    const response = await api.post<{ message: string }>('/metrics/aggregation/recompute');
+    return response.status;
+  },
+
+  /**
+   * 获取可选的源指标列表（用于聚合配置）
+   */
+  getSourceMetricOptions: async (dimension?: string): Promise<SourceMetricOption[]> => {
+    const response = await api.post<SourceMetricOption[]>('/metrics/aggregation/source-options', {}, {
+      params: dimension ? { dimension } : undefined,
+    });
+    return response.data;
   },
 };
 

@@ -6,6 +6,9 @@ from app.schemas.metric import (
     MetricHistoryCreate, MetricHistoryResponse,
     MetricListRequest, MetricGetRequest, MetricDeleteRequest,
     MetricUpdateRequest, MetricCategoryQueryRequest, MetricHistoryQueryRequest,
+    AggregationTypeEnum, AggregationConfigCreate, AggregationConfigResponse,
+    AggregationConfigDeleteRequest, AggregationComputeRequest,
+    MetricCreateWithAggregation, SourceMetricOption, SourceConfigItem,
 )
 
 __all__ = [
@@ -15,4 +18,7 @@ __all__ = [
     "MetricHistoryCreate", "MetricHistoryResponse",
     "MetricListRequest", "MetricGetRequest", "MetricDeleteRequest",
     "MetricUpdateRequest", "MetricCategoryQueryRequest", "MetricHistoryQueryRequest",
+    "AggregationTypeEnum", "AggregationConfigCreate", "AggregationConfigResponse",
+    "AggregationConfigDeleteRequest", "AggregationComputeRequest",
+    "MetricCreateWithAggregation", "SourceMetricOption", "SourceConfigItem",
 ]

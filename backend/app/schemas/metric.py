@@ -39,6 +39,12 @@ class DimensionEnum(str, Enum):
     OPERATION = "operation"   # 运作
 
 
+class AggregationTypeEnum(str, Enum):
+    """聚合类型枚举"""
+    SUM = "sum"
+    AVERAGE = "average"
+
+
 class MetricBase(BaseModel):
     """指标基础模型"""
     name: str = Field(..., min_length=1, max_length=100, description="指标名称")
@@ -53,6 +59,7 @@ class MetricBase(BaseModel):
     challenge_value: Optional[float] = Field(None, description="挑战值")
     previous_value: Optional[float] = Field(None, description="上一周期值")
     trend: Optional[TrendEnum] = Field(None, description="趋势")
+    aggregation_type: AggregationTypeEnum = Field(AggregationTypeEnum.AVERAGE, description="年度汇总方式: sum(求和)/average(平均)")
     description: Optional[str] = Field(None, description="指标描述")
     is_active: bool = Field(True, description="是否启用")
 
@@ -84,6 +91,7 @@ class MetricUpdate(BaseModel):
     challenge_value: Optional[float] = None
     previous_value: Optional[float] = None
     trend: Optional[TrendEnum] = None
+    aggregation_type: Optional[AggregationTypeEnum] = None
     description: Optional[str] = None
     is_active: Optional[bool] = None
 
@@ -163,8 +171,11 @@ class MetricUpdateRequest(BaseModel):
     challenge_value: Optional[float] = None
     previous_value: Optional[float] = None
     trend: Optional[TrendEnum] = None
-    description: Optional[str] = None
+    aggregation_type: Optional[AggregationTypeEnum] = None
+    description: Optional[str] = Field(None, max_length=500)
     is_active: Optional[bool] = None
+    # 聚合配置（仅 overview 指标支持）
+    source_configs: Optional[list["SourceConfigItem"]] = Field(default=[], description="来源指标配置")
 
     @field_validator('code')
     @classmethod
@@ -204,6 +215,87 @@ class MetricHistoryResponse(BaseModel):
     month: int
     value: float
     created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AggregationConfigCreate(BaseModel):
+    """创建聚合配置请求"""
+    target_metric_id: int = Field(..., description="目标指标ID(产品部)")
+    source_metric_id: int = Field(..., description="源指标ID(子产品)")
+    aggregation_type: AggregationTypeEnum = Field(..., description="聚合方式: sum/average")
+    weight: float = Field(1.0, description="权重(用于加权平均)")
+
+
+class AggregationConfigResponse(BaseModel):
+    """聚合配置响应"""
+    id: int
+    target_metric_id: int
+    source_metric_id: int
+    aggregation_type: str
+    weight: float
+
+    class Config:
+        from_attributes = True
+
+
+class AggregationConfigDeleteRequest(BaseModel):
+    """删除聚合配置请求"""
+    id: int = Field(..., description="聚合配置ID")
+
+
+class AggregationComputeRequest(BaseModel):
+    """计算聚合值请求"""
+    metric_id: int = Field(..., description="目标指标ID")
+
+
+class SourceConfigItem(BaseModel):
+    """来源指标配置项（在创建/编辑指标时内联使用）"""
+    source_metric_id: int = Field(..., description="源指标ID")
+    aggregation_type: AggregationTypeEnum = Field(..., description="聚合方式: sum/average")
+    weight: float = Field(1.0, description="权重")
+
+
+class MetricCreateWithAggregation(BaseModel):
+    """带聚合配置的指标创建请求"""
+    name: str = Field(..., min_length=1, max_length=100, description="指标名称")
+    code: str = Field(..., min_length=1, max_length=50, description="指标编码")
+    category: CategoryEnum = Field(..., description="所属分类")
+    data_type: DataTypeEnum = Field(..., description="数据类型")
+    dimension: DimensionEnum = Field(..., description="维度")
+    lower_is_better: bool = Field(True, description="达标条件")
+    unit: Optional[str] = Field(None, max_length=20, description="单位")
+    value: float = Field(..., description="当前值")
+    target_value: Optional[float] = Field(None, description="目标值")
+    challenge_value: Optional[float] = Field(None, description="挑战值")
+    previous_value: Optional[float] = Field(None, description="上一周期值")
+    trend: Optional[TrendEnum] = Field(None, description="趋势")
+    aggregation_type: AggregationTypeEnum = Field(AggregationTypeEnum.AVERAGE, description="年度汇总方式: sum(求和)/average(平均)")
+    description: Optional[str] = Field(None, description="指标描述")
+    is_active: bool = Field(True, description="是否启用")
+    # 聚合配置（仅 overview 指标支持）
+    source_configs: Optional[list[SourceConfigItem]] = Field(default=[], description="来源指标配置")
+
+    @field_validator('code')
+    @classmethod
+    def validate_code(cls, v):
+        """验证编码格式"""
+        if not v.replace('_', '').replace('-', '').isalnum():
+            raise ValueError('编码只能包含字母、数字、下划线和连字符')
+        return v.lower()
+
+
+class SourceMetricOption(BaseModel):
+    """可选的源指标（用于下拉选择）"""
+    id: int
+    name: str
+    code: str
+    category: str
+    dimension: str
+    lower_is_better: bool
+    unit: Optional[str] = None
+    data_type: str
 
     class Config:
         from_attributes = True

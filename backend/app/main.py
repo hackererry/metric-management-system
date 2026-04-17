@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 import logging
 
-from app.database import engine, Base
+from app.database import engine, Base, ensure_aggregation_type_column
 from app.models import Metric, MetricHistory  # noqa: F401 - 注册所有表
 from app.models import SpecialProject, SpecialProjectTarget  # noqa: F401 - 注册专项项目表
 from app.api.metrics import router
@@ -30,6 +30,7 @@ async def lifespan(application: FastAPI):
     """应用生命周期：启动和关闭逻辑"""
     # 启动：创建表并初始化数据
     Base.metadata.create_all(bind=engine)
+    ensure_aggregation_type_column()  # 确保 aggregation_type 列存在
     init_test_data()
     yield
     # 关闭：（如需清理资源可在此添加）

@@ -6,7 +6,7 @@ import { Card, Row, Col, Table, Typography, Tag, Spin, message, Tooltip, Radio, 
 import { CheckCircleOutlined, ExclamationCircleOutlined, CloseCircleOutlined, MinusOutlined } from '@ant-design/icons';
 import { ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
 import { metricApi } from '../services/api';
-import { Metric, MetricGroupedResponse, Dimension, DIMENSION_CONFIG } from '../types';
+import { Metric, MetricGroupedResponse, Dimension, DIMENSION_CONFIG, MonthlyHistoryMap } from '../types';
 import MonthlyLineChart from './MonthlyLineChart';
 
 const { Text } = Typography;
@@ -33,18 +33,12 @@ const DIMENSION_LABELS: Record<Dimension, string> = {
   operation: '运作',
 };
 
-// 伪随机数生成器（固定种子，保证相同年份数据一致）
-const createRandom = (seed: number) => {
-  let s = seed;
-  return () => {
-    s = (s * 1103515245 + 12345) & 0x7fffffff;
-    return s / 0x7fffffff;
-  };
-};
-
 const AnnualMetricsCard: React.FC<AnnualMetricsCardProps> = ({ year, month }) => {
   const [loading, setLoading] = useState(true);
   const [metricsData, setMetricsData] = useState<Metric[]>([]);
+  const [monthlyHistory, setMonthlyHistory] = useState<MonthlyHistoryMap>({});
+  // 标记月度历史数据是否加载完成
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   // 所有维度的展示模式状态（表格/折线图）
   const [viewModes, setViewModes] = useState<Record<Dimension, 'table' | 'chart'>>({
     quality: 'table',
@@ -58,6 +52,10 @@ const AnnualMetricsCard: React.FC<AnnualMetricsCardProps> = ({ year, month }) =>
     loadData();
   }, [year]);
 
+  useEffect(() => {
+    loadMonthlyHistory();
+  }, [year]);
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -69,6 +67,53 @@ const AnnualMetricsCard: React.FC<AnnualMetricsCardProps> = ({ year, month }) =>
       message.error(error.message || '加载年度指标失败');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadMonthlyHistory = async () => {
+    try {
+      const data = await metricApi.getMonthlyHistory('overview', year);
+      setMonthlyHistory(data);
+      setHistoryLoaded(true);
+    } catch (error: any) {
+      console.error('加载月度历史数据失败', error);
+      setHistoryLoaded(true);
+    }
+  };
+
+  // 根据月份计算指标值（返回 null 表示没有数据）
+  const getCalculatedValue = (metric: Metric): number | null => {
+    // 选择具体月份时，从月度历史数据中获取
+    if (month !== null && month !== undefined) {
+      const metricHistory = monthlyHistory[metric.code];
+      if (metricHistory && metricHistory[month] !== undefined) {
+        return metricHistory[month];
+      }
+      // 没有该月份数据，返回 null 显示横杠
+      return null;
+    }
+
+    // 选择"全部"时
+    // 如果月度历史数据还未加载完成，显示当前值
+    if (!historyLoaded) {
+      return metric.value;
+    }
+
+    // 月度历史数据已加载完成
+    const metricHistory = monthlyHistory[metric.code];
+    if (!metricHistory || Object.keys(metricHistory).length === 0) {
+      // 该年份没有任何数据，显示横杠
+      return null;
+    }
+
+    // 根据 aggregation_type 计算年度值
+    const values = Object.values(metricHistory);
+    if (metric.aggregation_type === 'sum') {
+      // 求和
+      return Math.round(values.reduce((acc, v) => acc + v, 0) * 100) / 100;
+    } else {
+      // 平均（默认）
+      return Math.round((values.reduce((acc, v) => acc + v, 0) / values.length) * 100) / 100;
     }
   };
 
@@ -168,8 +213,12 @@ const AnnualMetricsCard: React.FC<AnnualMetricsCardProps> = ({ year, month }) =>
 
     // 渲染单个指标子项（横向排列）
     const renderMetricItem = (metric: Metric, span: number) => {
-      const momChange = metric.previous_value && metric.previous_value !== 0
-        ? ((metric.value - metric.previous_value) / metric.previous_value * 100).toFixed(1)
+      const calculatedValue = getCalculatedValue(metric);
+      const hasValue = calculatedValue !== null;
+
+      // 只有有值且有上一周期值时才计算环比
+      const momChange = hasValue && metric.previous_value && metric.previous_value !== 0
+        ? ((calculatedValue - metric.previous_value) / metric.previous_value * 100).toFixed(1)
         : null;
       const isPositive = momChange ? parseFloat(momChange) > 0 : false;
       const isGood = metric.lower_is_better ? !isPositive : isPositive;
@@ -188,10 +237,16 @@ const AnnualMetricsCard: React.FC<AnnualMetricsCardProps> = ({ year, month }) =>
               <Text style={{ fontSize: 13, color: '#605E5C' }}>{metric.name}</Text>
             </div>
             <div>
-              <Text style={{ fontSize: 20, fontWeight: 600, color: '#323130' }}>
-                {metric.data_type === 'percentage' ? `${metric.value.toFixed(1)}%` : metric.value.toLocaleString()}
-              </Text>
-              <Text style={{ fontSize: 12, color: '#605E5C', marginLeft: 4 }}>{metric.unit || ''}</Text>
+              {hasValue ? (
+                <>
+                  <Text style={{ fontSize: 20, fontWeight: 600, color: '#323130' }}>
+                    {metric.data_type === 'percentage' ? `${calculatedValue.toFixed(1)}%` : calculatedValue.toLocaleString()}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: '#605E5C', marginLeft: 4 }}>{metric.unit || ''}</Text>
+                </>
+              ) : (
+                <Text style={{ fontSize: 20, fontWeight: 600, color: '#C8C6C4' }}>-</Text>
+              )}
             </div>
             {momChange !== null && (
               <div style={{ marginTop: 4 }}>
@@ -259,25 +314,7 @@ const AnnualMetricsCard: React.FC<AnnualMetricsCardProps> = ({ year, month }) =>
   const renderMonthlyData = () => {
     if (loading || metricsData.length === 0) return null;
 
-    // 生成月度数据（基于固定种子保证稳定）
-    const getMonthlyData = () => {
-      const baseValue = year === 2024 ? 1 : year === 2025 ? 1.1 : 0.9;
-      const random = createRandom(year * 1000 + 1);
-      const data: Record<number, Record<string, number>> = {};
-
-      for (let month = 0; month < 12; month++) {
-        data[month] = {};
-        metricsData.forEach(m => {
-          // 根据指标值范围生成月度波动数据
-          const base = m.value / baseValue;
-          const variance = base * 0.15;
-          data[month][m.code] = Math.round((base + (random() - 0.5) * variance) * 100) / 100;
-        });
-      }
-      return data;
-    };
-
-    const monthlyData = getMonthlyData();
+    // 使用从数据库加载的真实月度数据
     const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
 
     // 获取当前月份索引
@@ -319,7 +356,8 @@ const AnnualMetricsCard: React.FC<AnnualMetricsCardProps> = ({ year, month }) =>
           if (isCurrentYear && idx > currentMonth) {
             return <Text style={{ color: '#C8C6C4', fontSize: 10 }}>-</Text>;
           }
-          const value = monthlyData[idx]?.[record.code];
+          // monthlyHistory: { [metricCode]: { [month]: value } }
+          const value = monthlyHistory[record.code]?.[idx + 1];
           if (value === undefined) return <Text style={{ color: '#C8C6C4', fontSize: 10 }}>-</Text>;
           // 判断是否达标
           const isMet = record.target_value
@@ -374,7 +412,7 @@ const AnnualMetricsCard: React.FC<AnnualMetricsCardProps> = ({ year, month }) =>
           ) : (
             <MonthlyLineChart
               metrics={dimMetrics}
-              monthlyData={monthlyData}
+              monthlyData={monthlyHistory}
               year={year}
               dimension={dim}
             />

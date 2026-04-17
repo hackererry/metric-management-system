@@ -21,6 +21,7 @@ export interface Metric {
   challenge_value: number | null;
   previous_value: number | null;
   trend: Trend | null;
+  aggregation_type: AggregationType;
   description: string | null;
   is_active: boolean;
   created_at: string;
@@ -40,8 +41,10 @@ export interface MetricFormData {
   challenge_value?: number;
   previous_value?: number;
   trend?: Trend;
+  aggregation_type?: AggregationType;
   description?: string;
   is_active?: boolean;
+  source_configs?: SourceConfigItem[];
 }
 
 export interface MetricListResponse {
@@ -103,3 +106,53 @@ export const DIMENSION_CONFIG: Record<Dimension, { label: string; color: string 
   business: { label: '经营', color: '#004578' },
   operation: { label: '运作', color: '#CA5010' },
 };
+
+// 聚合类型
+export type AggregationType = 'sum' | 'average';
+
+// 聚合配置
+export interface AggregationConfig {
+  id: number;
+  target_metric_id: number;
+  source_metric_id: number;
+  aggregation_type: AggregationType;
+  weight: number;
+}
+
+// 聚合配置创建请求
+export interface AggregationConfigCreate {
+  target_metric_id: number;
+  source_metric_id: number;
+  aggregation_type: AggregationType;
+  weight?: number;
+}
+
+// 聚合配置响应（带指标详情）
+export interface AggregationConfigResponse {
+  id: number;
+  target_metric_id: number;
+  source_metric_id: number;
+  aggregation_type: string;
+  weight: number;
+  target_metric?: Metric;
+  source_metric?: Metric;
+}
+
+// 源指标选项（用于下拉选择）
+export interface SourceMetricOption {
+  id: number;
+  name: string;
+  code: string;
+  category: Category;
+  dimension: Dimension;
+  lower_is_better: boolean;
+  unit: string | null;
+  data_type: DataType;
+}
+
+// 来源配置项（内联在创建/编辑指标表单中）
+export interface SourceConfigItem {
+  source_metric_id: number;
+  aggregation_type: AggregationType;
+  weight: number;
+}
