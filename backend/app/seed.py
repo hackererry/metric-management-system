@@ -26,10 +26,7 @@ def init_test_data():
                     dimension="quality",
                     lower_is_better=True,
                     unit="个",
-                    value=18,
                     target_value=20,
-                    previous_value=22,
-                    trend="down",
                     description="线上质量问题数量"
                 ),
                 Metric(
@@ -40,10 +37,7 @@ def init_test_data():
                     dimension="quality",
                     lower_is_better=True,
                     unit="个",
-                    value=3,
                     target_value=5,
-                    previous_value=4,
-                    trend="down",
                     description="线上事故和事件数量"
                 ),
 
@@ -56,10 +50,7 @@ def init_test_data():
                     dimension="efficiency",
                     lower_is_better=True,
                     unit="天",
-                    value=3.5,
                     target_value=4,
-                    previous_value=4.2,
-                    trend="down",
                     description="需求到上线的平均周期"
                 ),
                 Metric(
@@ -70,10 +61,7 @@ def init_test_data():
                     dimension="efficiency",
                     lower_is_better=True,
                     unit="天",
-                    value=6.2,
                     target_value=7,
-                    previous_value=7.5,
-                    trend="down",
                     description="需求到上线的平均周期"
                 ),
 
@@ -86,10 +74,7 @@ def init_test_data():
                     dimension="experience",
                     lower_is_better=False,
                     unit="分",
-                    value=52,
                     target_value=50,
-                    previous_value=48,
-                    trend="up",
                     description="用户净推荐值"
                 ),
                 Metric(
@@ -100,10 +85,7 @@ def init_test_data():
                     dimension="experience",
                     lower_is_better=True,
                     unit="ms",
-                    value=920,
                     target_value=1000,
-                    previous_value=1050,
-                    trend="down",
                     description="首页平均加载时长"
                 ),
                 Metric(
@@ -114,10 +96,7 @@ def init_test_data():
                     dimension="experience",
                     lower_is_better=True,
                     unit="ms",
-                    value=720,
                     target_value=800,
-                    previous_value=850,
-                    trend="down",
                     description="分类页平均加载时长"
                 ),
                 Metric(
@@ -128,10 +107,7 @@ def init_test_data():
                     dimension="experience",
                     lower_is_better=True,
                     unit="ms",
-                    value=820,
                     target_value=900,
-                    previous_value=880,
-                    trend="down",
                     description="频道页平均加载时长"
                 ),
                 Metric(
@@ -142,10 +118,7 @@ def init_test_data():
                     dimension="experience",
                     lower_is_better=True,
                     unit="个",
-                    value=1,
                     target_value=2,
-                    previous_value=3,
-                    trend="down",
                     description="页面白屏次数"
                 ),
 
@@ -158,10 +131,7 @@ def init_test_data():
                     dimension="business",
                     lower_is_better=False,
                     unit="%",
-                    value=85.2,
                     target_value=90.0,
-                    previous_value=82.5,
-                    trend="up",
                     description="搜索结果召回率"
                 ),
                 Metric(
@@ -172,10 +142,7 @@ def init_test_data():
                     dimension="business",
                     lower_is_better=False,
                     unit="%",
-                    value=12.8,
                     target_value=15.0,
-                    previous_value=11.5,
-                    trend="up",
                     description="推荐位人均曝光点击率"
                 ),
                 Metric(
@@ -186,10 +153,7 @@ def init_test_data():
                     dimension="business",
                     lower_is_better=False,
                     unit="%",
-                    value=68.5,
                     target_value=70.0,
-                    previous_value=65.2,
-                    trend="up",
                     description="商品详情页到达率"
                 ),
 
@@ -203,10 +167,7 @@ def init_test_data():
                     data_type="number",
                     dimension="business",
                     unit="人",
-                    value=12500,
                     target_value=15000,
-                    previous_value=11200,
-                    trend="up",
                     description="导购产品每日活跃用户数"
                 ),
                 Metric(
@@ -216,10 +177,7 @@ def init_test_data():
                     data_type="number",
                     dimension="business",
                     unit="万元",
-                    value=856.2,
                     target_value=1000.0,
-                    previous_value=780.5,
-                    trend="up",
                     description="导购产品本月收入"
                 ),
 
@@ -231,10 +189,7 @@ def init_test_data():
                     data_type="percentage",
                     dimension="experience",
                     unit="%",
-                    value=92.5,
                     target_value=95.0,
-                    previous_value=91.0,
-                    trend="up",
                     description="导购产品用户满意度评分"
                 ),
 
@@ -247,10 +202,7 @@ def init_test_data():
                     dimension="quality",
                     lower_is_better=True,
                     unit="%",
-                    value=0.15,
                     target_value=0.1,
-                    previous_value=0.18,
-                    trend="down",
                     description="导购产品应用崩溃率"
                 ),
 
@@ -263,10 +215,7 @@ def init_test_data():
                     dimension="efficiency",
                     lower_is_better=True,
                     unit="ms",
-                    value=1200,
                     target_value=1000,
-                    previous_value=1350,
-                    trend="down",
                     description="导购产品应用冷启动时间"
                 ),
 
@@ -279,10 +228,7 @@ def init_test_data():
                     dimension="operation",
                     lower_is_better=True,
                     unit="天",
-                    value=8.5,
                     target_value=7,
-                    previous_value=9.2,
-                    trend="down",
                     description="需求从提出到上线的平均周期"
                 ),
 
@@ -296,10 +242,7 @@ def init_test_data():
                     data_type="number",
                     dimension="business",
                     unit="人",
-                    value=8600,
                     target_value=10000,
-                    previous_value=8200,
-                    trend="up",
                     description="交易产品每日活跃用户数"
                 ),
                 Metric(
@@ -309,10 +252,7 @@ def init_test_data():
                     data_type="number",
                     dimension="business",
                     unit="万元",
-                    value=625.8,
                     target_value=700.0,
-                    previous_value=590.0,
-                    trend="up",
                     description="交易产品本月收入"
                 ),
                 Metric(
@@ -322,10 +262,7 @@ def init_test_data():
                     data_type="percentage",
                     dimension="business",
                     unit="%",
-                    value=8.5,
                     target_value=10.0,
-                    previous_value=7.8,
-                    trend="up",
                     description="交易产品用户付费转化率"
                 ),
 
@@ -338,10 +275,7 @@ def init_test_data():
                     dimension="quality",
                     lower_is_better=False,
                     unit="%",
-                    value=99.2,
                     target_value=99.9,
-                    previous_value=98.8,
-                    trend="up",
                     description="交易产品接口调用成功率"
                 ),
 
@@ -354,10 +288,7 @@ def init_test_data():
                     dimension="efficiency",
                     lower_is_better=True,
                     unit="ms",
-                    value=85,
                     target_value=50,
-                    previous_value=95,
-                    trend="down",
                     description="交易产品接口平均延迟"
                 ),
 
@@ -370,10 +301,7 @@ def init_test_data():
                     dimension="operation",
                     lower_is_better=True,
                     unit="天",
-                    value=10.2,
                     target_value=8,
-                    previous_value=11.5,
-                    trend="down",
                     description="需求从提出到上线的平均周期"
                 ),
 
@@ -387,10 +315,7 @@ def init_test_data():
                     data_type="number",
                     dimension="business",
                     unit="人",
-                    value=15000,
                     target_value=18000,
-                    previous_value=14200,
-                    trend="up",
                     description="智选车产品每日活跃用户数"
                 ),
                 Metric(
@@ -400,10 +325,7 @@ def init_test_data():
                     data_type="number",
                     dimension="business",
                     unit="万元",
-                    value=1250.3,
                     target_value=1400.0,
-                    previous_value=1180.0,
-                    trend="up",
                     description="智选车产品本月收入"
                 ),
                 Metric(
@@ -413,10 +335,7 @@ def init_test_data():
                     data_type="number",
                     dimension="business",
                     unit="单",
-                    value=25680,
                     target_value=30000,
-                    previous_value=23500,
-                    trend="up",
                     description="智选车产品本月订单量"
                 ),
 
@@ -429,10 +348,7 @@ def init_test_data():
                     dimension="quality",
                     lower_is_better=True,
                     unit="%",
-                    value=0.5,
                     target_value=0.3,
-                    previous_value=0.8,
-                    trend="down",
                     description="智选车产品系统错误率"
                 ),
 
@@ -444,10 +360,7 @@ def init_test_data():
                     data_type="number",
                     dimension="efficiency",
                     unit="次/周",
-                    value=12,
                     target_value=15,
-                    previous_value=10,
-                    trend="up",
                     description="智选车产品每周部署次数"
                 ),
 
@@ -460,10 +373,7 @@ def init_test_data():
                     dimension="operation",
                     lower_is_better=True,
                     unit="天",
-                    value=12.5,
                     target_value=10,
-                    previous_value=14.0,
-                    trend="down",
                     description="需求从提出到上线的平均周期"
                 ),
 
@@ -477,10 +387,7 @@ def init_test_data():
                     data_type="number",
                     dimension="business",
                     unit="人",
-                    value=8500,
                     target_value=10000,
-                    previous_value=7800,
-                    trend="up",
                     description="公告产品每日活跃用户数"
                 ),
                 Metric(
@@ -490,10 +397,7 @@ def init_test_data():
                     data_type="number",
                     dimension="business",
                     unit="万元",
-                    value=680.5,
                     target_value=800.0,
-                    previous_value=620.0,
-                    trend="up",
                     description="公告产品本月收入"
                 ),
                 Metric(
@@ -503,10 +407,7 @@ def init_test_data():
                     data_type="number",
                     dimension="business",
                     unit="单",
-                    value=15680,
                     target_value=18000,
-                    previous_value=14200,
-                    trend="up",
                     description="公告产品本月订单量"
                 ),
 
@@ -519,10 +420,7 @@ def init_test_data():
                     dimension="quality",
                     lower_is_better=True,
                     unit="ms",
-                    value=125,
                     target_value=100,
-                    previous_value=135,
-                    trend="up",
                     description="公告产品平均接口响应时间"
                 ),
                 Metric(
@@ -533,10 +431,7 @@ def init_test_data():
                     dimension="quality",
                     lower_is_better=True,
                     unit="%",
-                    value=0.45,
                     target_value=0.3,
-                    previous_value=0.52,
-                    trend="up",
                     description="公告产品系统错误率"
                 ),
 
@@ -548,10 +443,7 @@ def init_test_data():
                     data_type="number",
                     dimension="efficiency",
                     unit="次/周",
-                    value=8,
                     target_value=10,
-                    previous_value=7,
-                    trend="up",
                     description="公告产品每周部署次数"
                 ),
 
@@ -564,10 +456,7 @@ def init_test_data():
                     dimension="operation",
                     lower_is_better=True,
                     unit="天",
-                    value=9.8,
                     target_value=8,
-                    previous_value=11.0,
-                    trend="down",
                     description="需求从提出到上线的平均周期"
                 ),
             ]
@@ -594,11 +483,12 @@ def _seed_monthly_history(db, metrics):
     # 使用固定种子保证数据可重复
     rng = random.Random(42)
 
+    # 基于 target_value 生成历史数据
     history_records = []
     for metric in metrics:
         for month in range(1, current_month + 1):
-            # 基于当前值生成有趋势的月度数据
-            # 越早的月份越远离当前值（模拟改善趋势）
+            # 基于目标值生成有趋势的月度数据
+            # 越早的月份越远离目标值（模拟改善趋势）
             months_back = current_month - month
             if metric.lower_is_better:
                 # 越小越好：早期值更大
@@ -607,9 +497,9 @@ def _seed_monthly_history(db, metrics):
                 # 越大越好：早期值更小
                 factor = 1 - months_back * 0.02
 
-            base_value = metric.value * factor
+            base_value = metric.target_value * factor
             # 添加小幅度随机波动
-            noise = rng.uniform(-0.05, 0.05) * abs(metric.value) if metric.value != 0 else 0
+            noise = rng.uniform(-0.05, 0.05) * abs(metric.target_value) if metric.target_value != 0 else 0
             month_value = round(base_value + noise, 2)
 
             history_records.append(MetricHistory(

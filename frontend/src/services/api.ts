@@ -40,6 +40,7 @@ export const metricApi = {
     skip?: number;
     limit?: number;
     category?: Category;
+    dimension?: string;
     is_active?: boolean;
     keyword?: string;
   }): Promise<MetricListResponse> => {
@@ -121,7 +122,7 @@ export const metricApi = {
   /**
    * 批量写入月度历史
    */
-  batchCreateHistory: async (records: { metric_id: number; year: number; month: number; value: number }[]): Promise<void> => {
+  batchCreateHistory: async (records: { metric_id: number; year: number; month: number; value: number; data_source_link?: string }[]): Promise<void> => {
     await api.post('/metrics/history/batch', records);
   },
 

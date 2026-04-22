@@ -26,8 +26,7 @@ class TestMetricCRUDCreate:
             code="return_test",
             category="overview",
             data_type="number",
-            dimension="quality",
-            value=10.0
+            dimension="quality"
         )
         result = MetricCRUD.create(db_session, metric_data)
         assert isinstance(result, Metric)
@@ -67,8 +66,7 @@ class TestMetricCRUDGet:
                 code=f"metric_{i}",
                 category="overview",
                 data_type="number",
-                dimension="quality",
-                value=i * 10.0
+                dimension="quality"
             )
             db_session.add(metric)
         db_session.commit()
@@ -85,8 +83,7 @@ class TestMetricCRUDGet:
                 code=f"pagination_{i}",
                 category="overview",
                 data_type="number",
-                dimension="quality",
-                value=i * 10.0
+                dimension="quality"
             )
             db_session.add(metric)
         db_session.commit()
@@ -108,8 +105,7 @@ class TestMetricCRUDGet:
                 code=f"{cat}_code",
                 category=cat,
                 data_type="number",
-                dimension="quality",
-                value=10.0
+                dimension="quality"
             )
             db_session.add(metric)
         db_session.commit()
@@ -121,9 +117,9 @@ class TestMetricCRUDGet:
     def test_get_list_by_keyword(self, db_session):
         """测试关键词搜索"""
         metrics = [
-            Metric(name="搜索测试一", code="search_1", category="overview", data_type="number", dimension="quality", value=10.0),
-            Metric(name="搜索测试二", code="search_2", category="overview", data_type="number", dimension="quality", value=20.0),
-            Metric(name="其他指标", code="other", category="overview", data_type="number", dimension="quality", value=30.0),
+            Metric(name="搜索测试一", code="search_1", category="overview", data_type="number", dimension="quality"),
+            Metric(name="搜索测试二", code="search_2", category="overview", data_type="number", dimension="quality"),
+            Metric(name="其他指标", code="other", category="overview", data_type="number", dimension="quality"),
         ]
         db_session.add_all(metrics)
         db_session.commit()
@@ -133,8 +129,8 @@ class TestMetricCRUDGet:
 
     def test_get_list_by_is_active(self, db_session):
         """测试按状态筛选"""
-        active = Metric(name="激活", code="active_metric", category="overview", data_type="number", dimension="quality", value=10.0, is_active=True)
-        inactive = Metric(name="未激活", code="inactive_metric", category="overview", data_type="number", dimension="quality", value=10.0, is_active=False)
+        active = Metric(name="激活", code="active_metric", category="overview", data_type="number", dimension="quality", is_active=True)
+        inactive = Metric(name="未激活", code="inactive_metric", category="overview", data_type="number", dimension="quality", is_active=False)
         db_session.add_all([active, inactive])
         db_session.commit()
 
@@ -148,12 +144,12 @@ class TestMetricCRUDUpdate:
 
     def test_update_metric(self, db_session, sample_metric):
         """测试更新指标"""
-        update_data = MetricUpdate(name="新名称", value=999.0)
+        update_data = MetricUpdate(name="新名称", target_value=60.0)
         result = MetricCRUD.update(db_session, sample_metric.id, update_data)
 
         assert result is not None
         assert result.name == "新名称"
-        assert result.value == 999.0
+        assert result.target_value == 60.0
 
     def test_update_not_found(self, db_session):
         """测试更新不存在的指标"""
@@ -192,9 +188,12 @@ class TestMetricCRUDBatch:
 
     def test_batch_update_values(self, db_session):
         """测试批量更新值"""
+        from app.models import MetricHistory
+        from datetime import datetime
+
         metrics = [
-            Metric(name="指标1", code="batch_1", category="overview", data_type="number", dimension="quality", value=10.0),
-            Metric(name="指标2", code="batch_2", category="overview", data_type="number", dimension="quality", value=20.0),
+            Metric(name="指标1", code="batch_1", category="overview", data_type="number", dimension="quality"),
+            Metric(name="指标2", code="batch_2", category="overview", data_type="number", dimension="quality"),
         ]
         db_session.add_all(metrics)
         db_session.commit()
@@ -204,36 +203,22 @@ class TestMetricCRUDBatch:
 
         assert count == 2
 
-        metric1 = MetricCRUD.get_by_code(db_session, "batch_1")
-        assert metric1.value == 100.0
-        assert metric1.previous_value == 10.0
-        assert metric1.trend == "up"
-
-    def test_batch_update_auto_trend(self, db_session):
-        """测试批量更新自动计算趋势"""
-        metric = Metric(
-            name="趋势测试",
-            code="trend_test",
-            category="overview",
-            data_type="number",
-            dimension="quality",
-            value=50.0,
-            previous_value=100.0
-        )
-        db_session.add(metric)
-        db_session.commit()
-
-        MetricCRUD.batch_update_values(db_session, {"trend_test": 30.0})
-        db_session.refresh(metric)
-
-        assert metric.trend == "down"  # 30 < 50
+        # 验证历史记录已写入
+        now = datetime.now()
+        history1 = db_session.query(MetricHistory).filter(
+            MetricHistory.metric_id == metrics[0].id,
+            MetricHistory.year == now.year,
+            MetricHistory.month == now.month
+        ).first()
+        assert history1 is not None
+        assert history1.value == 100.0
 
     def test_get_category_stats(self, db_session):
         """测试获取分类统计"""
         metrics = [
-            Metric(name="指标1", code="stat_1", category="overview", data_type="number", dimension="quality", value=10.0, is_active=True),
-            Metric(name="指标2", code="stat_2", category="overview", data_type="number", dimension="quality", value=20.0, is_active=False),
-            Metric(name="指标3", code="stat_3", category="product_a", data_type="number", dimension="efficiency", value=30.0, is_active=True),
+            Metric(name="指标1", code="stat_1", category="overview", data_type="number", dimension="quality", is_active=True),
+            Metric(name="指标2", code="stat_2", category="overview", data_type="number", dimension="quality", is_active=False),
+            Metric(name="指标3", code="stat_3", category="product_a", data_type="number", dimension="efficiency", is_active=True),
         ]
         db_session.add_all(metrics)
         db_session.commit()
@@ -247,11 +232,11 @@ class TestMetricCRUDBatch:
     def test_get_by_category_grouped(self, db_session):
         """测试按分类获取维度分组指标"""
         metrics = [
-            Metric(name="质量指标", code="dim_quality", category="overview", data_type="number", dimension="quality", value=10.0, is_active=True),
-            Metric(name="效率指标", code="dim_efficiency", category="overview", data_type="number", dimension="efficiency", value=20.0, is_active=True),
-            Metric(name="体验指标", code="dim_experience", category="overview", data_type="number", dimension="experience", value=30.0, is_active=True),
-            Metric(name="经营指标", code="dim_business", category="overview", data_type="number", dimension="business", value=40.0, is_active=True),
-            Metric(name="运作指标", code="dim_operation", category="overview", data_type="number", dimension="operation", value=50.0, is_active=True),
+            Metric(name="质量指标", code="dim_quality", category="overview", data_type="number", dimension="quality", is_active=True),
+            Metric(name="效率指标", code="dim_efficiency", category="overview", data_type="number", dimension="efficiency", is_active=True),
+            Metric(name="体验指标", code="dim_experience", category="overview", data_type="number", dimension="experience", is_active=True),
+            Metric(name="经营指标", code="dim_business", category="overview", data_type="number", dimension="business", is_active=True),
+            Metric(name="运作指标", code="dim_operation", category="overview", data_type="number", dimension="operation", is_active=True),
         ]
         db_session.add_all(metrics)
         db_session.commit()

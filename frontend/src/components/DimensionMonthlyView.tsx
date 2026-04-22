@@ -3,6 +3,7 @@
  */
 import React, { useState } from 'react';
 import { Card, Table, Tag, Radio, Typography, Empty } from 'antd';
+import { LinkOutlined } from '@ant-design/icons';
 import { Metric, Dimension, DIMENSION_CONFIG, MonthlyHistoryMap } from '../types';
 import MonthlyLineChart from './MonthlyLineChart';
 
@@ -27,27 +28,8 @@ const DimensionMonthlyView: React.FC<DimensionMonthlyViewProps> = ({
 
   const config = DIMENSION_CONFIG[dimension];
 
-  // 格式化显示值
-  const formatValue = (metric: Metric) => {
-    if (metric.data_type === 'percentage') {
-      return `${metric.value.toFixed(1)}%`;
-    }
-    return metric.unit ? `${metric.value.toLocaleString()} ${metric.unit}` : metric.value.toLocaleString();
-  };
-
-  // 获取趋势标签
-  const getTrendTag = (trend: string | null) => {
-    if (!trend) return '-';
-    const trendConfig: Record<string, { color: string; label: string; icon: string }> = {
-      up: { color: '#107C10', label: '上升', icon: '↑' },
-      down: { color: '#D13438', label: '下降', icon: '↓' },
-      stable: { color: '#605E5C', label: '持平', icon: '→' },
-    };
-    const c = trendConfig[trend];
-    return <Tag color={c.color}>{c.icon} {c.label}</Tag>;
-  };
-
   // 当月数据列定义
+  const currentMonth = new Date().getMonth() + 1;
   const currentColumns = [
     {
       title: '指标名称',
@@ -67,11 +49,28 @@ const DimensionMonthlyView: React.FC<DimensionMonthlyViewProps> = ({
       dataIndex: 'value',
       key: 'value',
       width: 120,
-      render: (_: any, record: Metric) => (
-        <Text strong style={{ color: record.target_value && record.value < record.target_value ? '#D13438' : '#107C10' }}>
-          {formatValue(record)}
-        </Text>
-      ),
+      render: (_: any, record: Metric) => {
+        const data = monthlyData[record.code]?.[currentMonth];
+        const historyData = data !== undefined ? (typeof data === 'object' ? data : { value: data, data_source_link: null }) : null;
+        const dataSourceLink = historyData?.data_source_link || record.data_source_link;
+        const value = data !== undefined ? (typeof data === 'object' ? data.value : data) : undefined;
+        if (value === undefined || value === null) return <Text type="secondary">-</Text>;
+        const isMet = record.target_value
+          ? record.lower_is_better ? value <= record.target_value : value >= record.target_value
+          : true;
+        const displayValue = record.data_type === 'percentage'
+          ? `${value.toFixed(1)}%`
+          : record.unit ? `${value.toLocaleString()} ${record.unit}` : value.toLocaleString();
+        const textEl = (
+          <Text strong style={{ color: isMet ? '#107C10' : '#D13438' }}>
+            {displayValue}
+          </Text>
+        );
+        if (dataSourceLink) {
+          return <a href={dataSourceLink} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>{textEl}</a>;
+        }
+        return textEl;
+      },
     },
     {
       title: '达标值',
@@ -97,13 +96,6 @@ const DimensionMonthlyView: React.FC<DimensionMonthlyViewProps> = ({
           : record.challenge_value.toLocaleString();
       },
     },
-    {
-      title: '趋势',
-      dataIndex: 'trend',
-      key: 'trend',
-      width: 80,
-      render: (trend: string) => getTrendTag(trend),
-    },
   ];
 
   // 12月列表列定义
@@ -120,17 +112,24 @@ const DimensionMonthlyView: React.FC<DimensionMonthlyViewProps> = ({
       key: `month_${i + 1}`,
       width: 80,
       render: (_: any, record: Metric) => {
-        const value = monthlyData[record.code]?.[i + 1];
+        const data = monthlyData[record.code]?.[i + 1];
+        const historyData = data !== undefined ? (typeof data === 'object' ? data : { value: data, data_source_link: null }) : null;
+        const dataSourceLink = historyData?.data_source_link || record.data_source_link;
+        const value = data !== undefined ? (typeof data === 'object' ? data.value : data) : undefined;
         if (value === undefined || value === null) return <Text type="secondary">-</Text>;
         // 根据是否达标着色
         const isMet = record.target_value
           ? record.lower_is_better ? value <= record.target_value : value >= record.target_value
           : true;
-        return (
+        const textEl = (
           <Text style={{ color: isMet ? '#107C10' : '#D13438', fontSize: 12 }}>
             {record.data_type === 'percentage' ? `${value.toFixed(1)}%` : value.toLocaleString()}
           </Text>
         );
+        if (dataSourceLink) {
+          return <a href={dataSourceLink} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>{textEl}</a>;
+        }
+        return textEl;
       },
     })),
   ];
@@ -149,8 +148,8 @@ const DimensionMonthlyView: React.FC<DimensionMonthlyViewProps> = ({
             onChange={(e) => setViewMode(e.target.value)}
           >
             <Radio.Button value="current">当月数据</Radio.Button>
-            <Radio.Button value="table">12月列表</Radio.Button>
-            <Radio.Button value="chart">12月折线</Radio.Button>
+            <Radio.Button value="table">表格</Radio.Button>
+            <Radio.Button value="chart">折线图</Radio.Button>
           </Radio.Group>
         </div>
       }

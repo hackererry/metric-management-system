@@ -42,8 +42,7 @@ class TestMetricAPI:
             "code": "invalid@code!",
             "category": "overview",
             "data_type": "number",
-            "dimension": "quality",
-            "value": 100.0
+            "dimension": "quality"
         }
         response = client.post("/api/metrics/create", json=invalid_data)
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
@@ -98,12 +97,12 @@ class TestMetricAPI:
 
     def test_update_metric(self, client, sample_metric):
         """测试更新指标"""
-        update_data = {"id": sample_metric.id, "name": "更新后的名称", "value": 999.0}
+        update_data = {"id": sample_metric.id, "name": "更新后的名称", "target_value": 60.0}
         response = client.post("/api/metrics/update", json=update_data)
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert data["name"] == "更新后的名称"
-        assert data["value"] == 999.0
+        assert data["target_value"] == 60.0
 
     def test_update_metric_not_found(self, client):
         """测试更新不存在的指标"""
@@ -118,8 +117,7 @@ class TestMetricAPI:
             "code": "new_unique_code",
             "category": "overview",
             "data_type": "number",
-            "dimension": "quality",
-            "value": 50.0
+            "dimension": "quality"
         }
         create_response = client.post("/api/metrics/create", json=new_metric)
         new_metric_id = create_response.json()["id"]
@@ -184,21 +182,7 @@ class TestBatchUpdateAPI:
         updates = {sample_metric.code: 888.0}
         response = client.post("/api/metrics/batch-update", json=updates)
         assert response.status_code == status.HTTP_200_OK
-
-        get_response = client.post("/api/metrics/get", json={"id": sample_metric.id})
-        updated_metric = get_response.json()
-        assert updated_metric["value"] == 888.0
-
-    def test_batch_update_trend_calculation(self, client, sample_metric):
-        """测试批量更新趋势计算"""
-        original_value = sample_metric.value
-        updates = {sample_metric.code: original_value + 10.0}
-        response = client.post("/api/metrics/batch-update", json=updates)
-        assert response.status_code == status.HTTP_200_OK
-
-        get_response = client.post("/api/metrics/get", json={"id": sample_metric.id})
-        updated_metric = get_response.json()
-        assert updated_metric["trend"] == "up"
+        # 注意：batch-update 现在只写入 MetricHistory，不更新 Metric 本身的 value
 
 
 class TestHistoryAPI:
@@ -226,8 +210,7 @@ class TestValidation:
             "code": "no_name",
             "category": "overview",
             "data_type": "number",
-            "dimension": "quality",
-            "value": 100.0
+            "dimension": "quality"
         }
         response = client.post("/api/metrics/create", json=invalid_data)
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
@@ -236,19 +219,6 @@ class TestValidation:
         """测试编码必填"""
         invalid_data = {
             "name": "测试名称",
-            "category": "overview",
-            "data_type": "number",
-            "dimension": "quality",
-            "value": 100.0
-        }
-        response = client.post("/api/metrics/create", json=invalid_data)
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-
-    def test_value_required(self, client):
-        """测试值必填"""
-        invalid_data = {
-            "name": "测试名称",
-            "code": "test_code",
             "category": "overview",
             "data_type": "number",
             "dimension": "quality"
@@ -262,8 +232,7 @@ class TestValidation:
             "name": "测试名称",
             "code": "test_code",
             "category": "overview",
-            "data_type": "number",
-            "value": 100.0
+            "data_type": "number"
         }
         response = client.post("/api/metrics/create", json=invalid_data)
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY

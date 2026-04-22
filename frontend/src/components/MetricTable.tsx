@@ -29,7 +29,6 @@ import {
   Dimension,
   CATEGORY_CONFIG,
   DATA_TYPE_CONFIG,
-  TREND_CONFIG,
   DIMENSION_CONFIG,
   MetricFormData,
 } from '../types';
@@ -61,15 +60,11 @@ const MetricTable: React.FC = () => {
         limit: pageSize,
         keyword: keyword || undefined,
         category: categoryFilter,
+        dimension: dimensionFilter || undefined,
         is_active: statusFilter,
       });
-      // 前端按维度筛选（后端不提供维度筛选参数）
-      let items = response.items;
-      if (dimensionFilter) {
-        items = items.filter(m => m.dimension === dimensionFilter);
-      }
-      setMetrics(items);
-      setTotal(dimensionFilter ? items.length : response.total);
+      setMetrics(response.items);
+      setTotal(response.total);
     } catch (error: any) {
       message.error(error.message || '加载数据失败');
     } finally {
@@ -80,6 +75,11 @@ const MetricTable: React.FC = () => {
   useEffect(() => {
     loadData();
   }, [page, pageSize, keyword, categoryFilter, dimensionFilter, statusFilter]);
+
+  // 筛选变化时重置页码
+  useEffect(() => {
+    setPage(1);
+  }, [keyword, categoryFilter, dimensionFilter, statusFilter]);
 
   // 删除指标
   const handleDelete = async (id: number) => {
@@ -128,81 +128,46 @@ const MetricTable: React.FC = () => {
   // 表格列定义
   const columns = [
     {
-      title: 'ID',
-      dataIndex: 'id',
-      key: 'id',
-      width: 60,
-    },
-    {
       title: '指标名称',
       dataIndex: 'name',
       key: 'name',
-      width: 150,
+      width: 180,
       render: (text: string, record: Metric) => (
-        <span>
-          {text}
-          {record.description && (
-            <span style={{ color: '#8c8c8c', marginLeft: 4, fontSize: 12 }}>
-              ({record.description.slice(0, 20)}...)
-            </span>
-          )}
-        </span>
+        <span>{text}</span>
       ),
-    },
-    {
-      title: '编码',
-      dataIndex: 'code',
-      key: 'code',
-      width: 120,
-      render: (text: string) => <code style={{ fontSize: 12 }}>{text}</code>,
     },
     {
       title: '分类',
       dataIndex: 'category',
       key: 'category',
-      width: 100,
+      width: 80,
       render: (category: Category) => {
         const config = CATEGORY_CONFIG[category];
-        return <Tag color={config.color} style={{ borderRadius: 4 }}>{config.label}</Tag>;
+        return <Tag color={config.color} style={{ borderRadius: 4, marginRight: 0 }}>{config.label}</Tag>;
       },
     },
     {
       title: '维度',
       dataIndex: 'dimension',
       key: 'dimension',
-      width: 80,
+      width: 70,
       render: (dimension: Dimension) => {
         const config = DIMENSION_CONFIG[dimension];
-        return config ? <Tag color={config.color} style={{ borderRadius: 4 }}>{config.label}</Tag> : '-';
+        return config ? <Tag color={config.color} style={{ borderRadius: 4, marginRight: 0 }}>{config.label}</Tag> : '-';
       },
     },
     {
       title: '数据类型',
       dataIndex: 'data_type',
       key: 'data_type',
-      width: 100,
+      width: 80,
       render: (type: string) => DATA_TYPE_CONFIG[type as keyof typeof DATA_TYPE_CONFIG]?.label || type,
-    },
-    {
-      title: '当前值',
-      dataIndex: 'value',
-      key: 'value',
-      width: 120,
-      render: (value: number, record: Metric) => {
-        const display =
-          record.data_type === 'percentage'
-            ? `${value.toFixed(1)}%`
-            : record.unit
-            ? `${value.toLocaleString()} ${record.unit}`
-            : value.toLocaleString();
-        return <span style={{ fontWeight: 500 }}>{display}</span>;
-      },
     },
     {
       title: '目标值',
       dataIndex: 'target_value',
       key: 'target_value',
-      width: 120,
+      width: 100,
       render: (value: number | null, record: Metric) => {
         if (!value) return '-';
         const display =
@@ -215,25 +180,10 @@ const MetricTable: React.FC = () => {
       },
     },
     {
-      title: '趋势',
-      dataIndex: 'trend',
-      key: 'trend',
-      width: 80,
-      render: (trend: string) => {
-        if (!trend) return '-';
-        const config = TREND_CONFIG[trend as keyof typeof TREND_CONFIG];
-        return (
-          <Tag color={config.color} style={{ borderRadius: 4 }}>
-            {config.icon} {config.label}
-          </Tag>
-        );
-      },
-    },
-    {
       title: '状态',
       dataIndex: 'is_active',
       key: 'is_active',
-      width: 80,
+      width: 60,
       render: (active: boolean, record: Metric) => (
         <Switch
           checked={active}
@@ -278,7 +228,7 @@ const MetricTable: React.FC = () => {
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col span={6}>
           <Search
-            placeholder="搜索指标名称/编码/描述"
+            placeholder="搜索指标名称/描述"
             allowClear
             onSearch={setKeyword}
             enterButton={<SearchOutlined />}
@@ -353,7 +303,7 @@ const MetricTable: React.FC = () => {
             setPageSize(ps);
           },
         }}
-        scroll={{ x: 1200 }}
+        scroll={{ x: 800 }}
       />
 
       {/* 表单弹窗 */}

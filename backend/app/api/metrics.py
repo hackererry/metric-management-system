@@ -94,6 +94,7 @@ async def get_metrics(
     - **skip**: 分页偏移量
     - **limit**: 每页数量
     - **category**: 按分类筛选
+    - **dimension**: 按维度筛选
     - **is_active**: 按状态筛选
     - **keyword**: 搜索关键词（匹配名称、编码、描述）
     """
@@ -102,6 +103,7 @@ async def get_metrics(
         skip=request.skip,
         limit=request.limit,
         category=request.category,
+        dimension=request.dimension,
         is_active=request.is_active,
         keyword=request.keyword
     )
@@ -138,11 +140,33 @@ async def batch_create_history(
     records: list[MetricHistoryCreate],
     db: Session = Depends(get_db)
 ):
-    """批量创建月度历史记录"""
-    from app.models import MetricHistory
+    """批量创建或更新月度历史记录"""
+    from app.models import Metric, MetricHistory
+
+    # 校验所有 metric_id 存在
+    metric_ids = list(set(r.metric_id for r in records))
+    metrics = db.query(Metric).filter(Metric.id.in_(metric_ids)).all()
+    metric_map = {m.id: m for m in metrics}
+
+    invalid_ids = set(metric_ids) - set(metric_map.keys())
+    if invalid_ids:
+        raise HTTPException(status_code=400, detail=f"无效的 metric_id: {invalid_ids}")
+
+    # 检查 overview 指标是否配置了聚合来源（配置了则禁止手动录入）
+    for record in records:
+        metric = metric_map[record.metric_id]
+        if metric.category == 'overview':
+            configs = AggregationCRUD.get_configs_by_target(db, record.metric_id)
+            if configs:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"指标 '{metric.name}' 是聚合指标，其值由子产品指标自动计算，请勿手动录入"
+                )
+
+    # 构建对象并批量写入
     objs = [MetricHistory(**r.model_dump()) for r in records]
-    MetricHistoryCRUD.bulk_create(db, objs)
-    return {"code": 200, "message": f"成功写入 {len(records)} 条历史记录"}
+    result = MetricHistoryCRUD.bulk_create(db, objs)
+    return {"code": 200, "message": f"成功写入 {result['created']} 条，更新 {result['updated']} 条"}
 
 
 @router.post("/category/grouped", summary="按分类获取分组指标")
@@ -412,6 +436,7 @@ async def compute_aggregated_value(
 
 @router.post("/aggregation/recompute", summary="重新计算所有聚合指标")
 async def recompute_all_aggregations(
+    request: AggregationComputeRequest,
     db: Session = Depends(get_db)
 ):
     """
@@ -419,5 +444,7 @@ async def recompute_all_aggregations(
 
     通常在批量数据修正后使用
     """
-    count = AggregationCRUD.recompute_all(db)
+    from datetime import datetime
+    now = datetime.now()
+    count = AggregationCRUD.recompute_all(db, now.year, now.month)
     return {"code": 200, "message": f"成功重新计算 {count} 个聚合指标"}
