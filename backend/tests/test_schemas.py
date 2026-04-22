@@ -153,10 +153,10 @@ class TestMetricUpdate:
 
     def test_update_partial_fields(self):
         """测试部分更新"""
-        update = MetricUpdate(value=200.0)
+        update = MetricUpdate(target_value=200.0)
         data = update.model_dump(exclude_unset=True)
-        assert "value" in data
-        assert data["value"] == 200.0
+        assert "target_value" in data
+        assert data["target_value"] == 200.0
         assert "name" not in data
 
     def test_update_empty(self):

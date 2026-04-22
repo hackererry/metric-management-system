@@ -66,11 +66,8 @@ def sample_metric_data():
         "dimension": "quality",
         "lower_is_better": True,
         "unit": "个",
-        "value": 100.0,
         "target_value": 80.0,
         "challenge_value": 60.0,
-        "previous_value": 90.0,
-        "trend": "down",
         "description": "这是一个测试指标",
         "is_active": True
     }
@@ -87,11 +84,8 @@ def sample_metric(db_session):
         dimension="quality",
         lower_is_better=True,
         unit="个",
-        value=50.0,
         target_value=40.0,
         challenge_value=30.0,
-        previous_value=45.0,
-        trend="up",
         description="示例指标描述",
         is_active=True
     )

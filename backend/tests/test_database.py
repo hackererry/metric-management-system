@@ -20,10 +20,7 @@ class TestMetricModel:
             dimension="quality",
             lower_is_better=True,
             unit="个",
-            value=100.0,
             target_value=80.0,
-            previous_value=90.0,
-            trend="down",
             description="测试描述",
             is_active=True
         )
@@ -36,7 +33,7 @@ class TestMetricModel:
         assert metric.category == "overview"
         assert metric.dimension == "quality"
         assert metric.data_type == "number"
-        assert metric.value == 100.0
+        assert metric.target_value == 80.0
         assert metric.created_at is not None
         assert metric.updated_at is not None
 
@@ -47,8 +44,7 @@ class TestMetricModel:
             code="test_defaults",
             category="overview",
             data_type="number",
-            dimension="quality",
-            value=10.0
+            dimension="quality"
         )
         db_session.add(metric)
         db_session.commit()
@@ -63,8 +59,7 @@ class TestMetricModel:
             code="unique_code",
             category="overview",
             data_type="number",
-            dimension="quality",
-            value=10.0
+            dimension="quality"
         )
         db_session.add(metric1)
         db_session.commit()
@@ -74,8 +69,7 @@ class TestMetricModel:
             code="unique_code",
             category="product_a",
             data_type="number",
-            dimension="efficiency",
-            value=20.0
+            dimension="efficiency"
         )
         db_session.add(metric2)
 
@@ -89,8 +83,7 @@ class TestMetricModel:
             code="test_timestamps",
             category="overview",
             data_type="number",
-            dimension="quality",
-            value=10.0
+            dimension="quality"
         )
         db_session.add(metric)
         db_session.commit()
@@ -101,11 +94,11 @@ class TestMetricModel:
     def test_metric_update(self, db_session, sample_metric):
         """测试指标更新"""
         original_updated_at = sample_metric.updated_at
-        sample_metric.value = 200.0
+        sample_metric.target_value = 60.0
         db_session.commit()
         db_session.refresh(sample_metric)
 
-        assert sample_metric.value == 200.0
+        assert sample_metric.target_value == 60.0
         assert sample_metric.updated_at >= original_updated_at
 
     def test_metric_delete(self, db_session, sample_metric):
@@ -168,8 +161,7 @@ class TestMetricHistoryModel:
             code="cascade_test",
             category="overview",
             data_type="number",
-            dimension="quality",
-            value=10.0
+            dimension="quality"
         )
         db_session.add(metric)
         db_session.commit()

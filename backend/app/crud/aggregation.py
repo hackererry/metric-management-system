@@ -4,7 +4,7 @@
 from sqlalchemy.orm import Session
 from typing import Optional, List
 
-from app.models import MetricAggregationConfig, Metric
+from app.models import MetricAggregationConfig, Metric, MetricHistory
 from app.schemas import AggregationConfigCreate
 
 
@@ -57,8 +57,8 @@ class AggregationCRUD:
         return True
 
     @staticmethod
-    def compute_aggregated_value(db: Session, target_metric_id: int) -> Optional[float]:
-        """计算目标指标的聚合值"""
+    def compute_aggregated_value(db: Session, target_metric_id: int, year: int, month: int) -> Optional[float]:
+        """计算目标指标的聚合值（从源指标的 MetricHistory 获取数据）"""
         configs = AggregationCRUD.get_configs_by_target(db, target_metric_id)
         if not configs:
             return None
@@ -66,9 +66,14 @@ class AggregationCRUD:
         values = []
         weights = []
         for cfg in configs:
-            source_metric = db.query(Metric).filter(Metric.id == cfg.source_metric_id).first()
-            if source_metric:
-                values.append(source_metric.value * cfg.weight)
+            # 从 MetricHistory 获取源指标在指定年月的数据
+            source_history = db.query(MetricHistory).filter(
+                MetricHistory.metric_id == cfg.source_metric_id,
+                MetricHistory.year == year,
+                MetricHistory.month == month
+            ).first()
+            if source_history:
+                values.append(source_history.value * cfg.weight)
                 weights.append(cfg.weight)
 
         if not values:
@@ -88,29 +93,33 @@ class AggregationCRUD:
         return round(result, 2)
 
     @staticmethod
-    def recompute_by_source(db: Session, source_metric_id: int) -> List[int]:
-        """当源指标更新时，重新计算所有相关的目标指标"""
+    def recompute_by_source(db: Session, source_metric_id: int, year: int, month: int) -> List[int]:
+        """当源指标更新时，重新计算所有相关的目标指标，并将结果写入 MetricHistory"""
         # 找到所有以该源指标为来源的目标指标
         configs = AggregationCRUD.get_configs_by_source(db, source_metric_id)
         updated_target_ids = []
 
         for cfg in configs:
             # 计算新的聚合值
-            new_value = AggregationCRUD.compute_aggregated_value(db, cfg.target_metric_id)
+            new_value = AggregationCRUD.compute_aggregated_value(db, cfg.target_metric_id, year, month)
             if new_value is not None:
-                target_metric = db.query(Metric).filter(Metric.id == cfg.target_metric_id).first()
-                if target_metric:
-                    target_metric.previous_value = target_metric.value
-                    target_metric.value = new_value
-                    # 自动计算趋势
-                    if target_metric.previous_value:
-                        if new_value > target_metric.previous_value:
-                            target_metric.trend = "up"
-                        elif new_value < target_metric.previous_value:
-                            target_metric.trend = "down"
-                        else:
-                            target_metric.trend = "stable"
-                    updated_target_ids.append(cfg.target_metric_id)
+                # 将聚合结果写入目标指标的 MetricHistory
+                existing_history = db.query(MetricHistory).filter(
+                    MetricHistory.metric_id == cfg.target_metric_id,
+                    MetricHistory.year == year,
+                    MetricHistory.month == month
+                ).first()
+                if existing_history:
+                    existing_history.value = new_value
+                else:
+                    history = MetricHistory(
+                        metric_id=cfg.target_metric_id,
+                        year=year,
+                        month=month,
+                        value=new_value
+                    )
+                    db.add(history)
+                updated_target_ids.append(cfg.target_metric_id)
 
         if updated_target_ids:
             db.commit()
@@ -118,25 +127,35 @@ class AggregationCRUD:
         return updated_target_ids
 
     @staticmethod
-    def recompute_all(db: Session) -> int:
-        """重新计算所有聚合指标"""
+    def recompute_all(db: Session, year: int, month: int) -> int:
+        """重新计算所有聚合指标（将结果写入 MetricHistory）"""
+        from datetime import datetime
+        if year is None:
+            now = datetime.now()
+            year, month = now.year, now.month
+
         all_configs = AggregationCRUD.get_all(db)
         target_ids = set(cfg.target_metric_id for cfg in all_configs)
 
         for target_id in target_ids:
-            new_value = AggregationCRUD.compute_aggregated_value(db, target_id)
+            new_value = AggregationCRUD.compute_aggregated_value(db, target_id, year, month)
             if new_value is not None:
-                target_metric = db.query(Metric).filter(Metric.id == target_id).first()
-                if target_metric:
-                    target_metric.previous_value = target_metric.value
-                    target_metric.value = new_value
-                    if target_metric.previous_value:
-                        if new_value > target_metric.previous_value:
-                            target_metric.trend = "up"
-                        elif new_value < target_metric.previous_value:
-                            target_metric.trend = "down"
-                        else:
-                            target_metric.trend = "stable"
+                # 将聚合结果写入 MetricHistory
+                existing_history = db.query(MetricHistory).filter(
+                    MetricHistory.metric_id == target_id,
+                    MetricHistory.year == year,
+                    MetricHistory.month == month
+                ).first()
+                if existing_history:
+                    existing_history.value = new_value
+                else:
+                    history = MetricHistory(
+                        metric_id=target_id,
+                        year=year,
+                        month=month,
+                        value=new_value
+                    )
+                    db.add(history)
 
         db.commit()
         return len(target_ids)

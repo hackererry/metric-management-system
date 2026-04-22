@@ -16,12 +16,10 @@ export interface Metric {
   dimension: Dimension;
   lower_is_better: boolean;
   unit: string | null;
-  value: number;
   target_value: number | null;
   challenge_value: number | null;
-  previous_value: number | null;
-  trend: Trend | null;
   aggregation_type: AggregationType;
+  data_source_link?: string | null;
   description: string | null;
   is_active: boolean;
   created_at: string;
@@ -36,12 +34,10 @@ export interface MetricFormData {
   dimension: Dimension;
   lower_is_better?: boolean;
   unit?: string;
-  value: number;
   target_value?: number;
   challenge_value?: number;
-  previous_value?: number;
-  trend?: Trend;
   aggregation_type?: AggregationType;
+  data_source_link?: string;
   description?: string;
   is_active?: boolean;
   source_configs?: SourceConfigItem[];
@@ -70,9 +66,14 @@ export interface ApiResponse<T = any> {
   data?: T;
 }
 
-// 月度历史数据映射: { metricCode: { month(1-12): value } }
+// 月度历史数据映射: { metricCode: { month(1-12): { value: number, data_source_link?: string } } }
+export interface MonthlyHistoryItem {
+  value: number;
+  data_source_link?: string | null;
+}
+
 export interface MonthlyHistoryMap {
-  [metricCode: string]: { [month: number]: number };
+  [metricCode: string]: { [month: number]: MonthlyHistoryItem };
 }
 
 // 分类配置 - 科技蓝主题色系

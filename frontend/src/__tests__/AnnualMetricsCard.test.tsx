@@ -20,10 +20,7 @@ describe('components/AnnualMetricsCard', () => {
       dimension: 'quality',
       lower_is_better: true,
       unit: '个',
-      value: 18,
       target_value: 20,
-      previous_value: 22,
-      trend: 'down',
       description: '线上质量问题数量',
       is_active: true,
       created_at: '2024-01-01T00:00:00',
@@ -38,10 +35,7 @@ describe('components/AnnualMetricsCard', () => {
       dimension: 'experience',
       lower_is_better: false,
       unit: '分',
-      value: 52,
       target_value: 50,
-      previous_value: 48,
-      trend: 'up',
       description: '用户净推荐值',
       is_active: true,
       created_at: '2024-01-01T00:00:00',
@@ -85,21 +79,8 @@ describe('components/AnnualMetricsCard', () => {
     expect(npsMetric?.lower_is_better).toBe(false);
   });
 
-  it('目标完成率计算逻辑应该正确', () => {
-    const metric = mockMetrics[0]; // value=18, target=20
-    const completionRate = metric.target_value
-      ? (metric.value / metric.target_value) * 100
-      : null;
-
-    expect(completionRate).toBe(90); // 18/20 = 90%
-  });
-
-  it('环比变化计算逻辑应该正确', () => {
-    const metric = mockMetrics[0]; // value=18, previous=22
-    const changeRate = metric.previous_value
-      ? ((metric.value - metric.previous_value) / metric.previous_value) * 100
-      : null;
-
-    expect(changeRate).toBeCloseTo(-18.18, 1); // (18-22)/22 ≈ -18.18%
+  it('目标值应该存在', () => {
+    const metric = mockMetrics[0];
+    expect(metric.target_value).toBe(20);
   });
 });

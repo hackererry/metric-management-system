@@ -2,7 +2,7 @@
  * 看板页面 - 年度指标 + 产品团队雷达图卡片 + 详细指标列表（按维度分组）
  */
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Card, Spin, message, Divider, Typography, Empty, Select } from 'antd';
+import { Row, Col, Card, message, Divider, Typography, Empty, Select } from 'antd';
 import {
   CalendarOutlined,
 } from '@ant-design/icons';
@@ -31,11 +31,9 @@ const Dashboard: React.FC = () => {
   const [allMetrics, setAllMetrics] = useState<Partial<Record<Category, MetricGroupedResponse>>>({});
   const [monthlyHistory, setMonthlyHistory] = useState<Partial<Record<Category, MonthlyHistoryMap>>>({});
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
 
   // 加载所有数据
   const loadData = async () => {
-    setLoading(true);
     try {
       const categories: Category[] = ['overview', 'product_a', 'product_b', 'product_c', 'product_d'];
       const [groupedResults, historyResults] = await Promise.all([
@@ -53,8 +51,6 @@ const Dashboard: React.FC = () => {
       setMonthlyHistory(historyMap);
     } catch (error: any) {
       message.error(error.message || '加载数据失败');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -65,29 +61,26 @@ const Dashboard: React.FC = () => {
   // 计算团队统计数据
   const getTeamStats = (category: Category) => {
     const metrics = allMetrics[category];
+    const history = monthlyHistory[category];
     if (!metrics) return { totalCount: 0, normalCount: 0, abnormalCount: 0 };
 
     const allTeamMetrics = Object.values(metrics).flat();
     const totalCount = allTeamMetrics.length;
 
-    const normalCount = allTeamMetrics.filter(m =>
-      !m.target_value || m.value >= m.target_value
-    ).length;
+    // 从 monthlyHistory 获取当前值来计算统计
+    const currentMonth = month || new Date().getMonth() + 1;
+    const normalCount = allTeamMetrics.filter(m => {
+      const data = history?.[m.code]?.[currentMonth];
+      const value = data !== undefined ? (typeof data === 'object' ? data.value : data) : undefined;
+      if (value === undefined || value === null) return false;
+      if (!m.target_value) return true;
+      return m.lower_is_better ? value <= m.target_value : value >= m.target_value;
+    }).length;
 
-    const abnormalCount = allTeamMetrics.filter(m =>
-      m.target_value && m.value < m.target_value
-    ).length;
+    const abnormalCount = totalCount - normalCount;
 
     return { totalCount, normalCount, abnormalCount };
   };
-
-  if (loading) {
-    return (
-      <div style={{ textAlign: 'center', padding: '100px 0' }}>
-        <Spin size="large" />
-      </div>
-    );
-  }
 
   const selectedMetrics = selectedTeam ? allMetrics[selectedTeam as Category] : null;
   const selectedHistory = selectedTeam ? monthlyHistory[selectedTeam as Category] : null;
@@ -138,7 +131,12 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* 年度指标展示卡片 */}
-      <AnnualMetricsCard year={year} month={month} />
+      <AnnualMetricsCard
+        year={year}
+        month={month}
+        overviewMetrics={allMetrics.overview}
+        overviewHistory={monthlyHistory.overview}
+      />
 
       {/* 专项项目卡片 */}
       <SpecialProjectCard year={year} />
@@ -202,6 +200,8 @@ const Dashboard: React.FC = () => {
                   month={month}
                   isSelected={isSelected}
                   onClick={() => setSelectedTeam(isSelected ? null : key)}
+                  metrics={allMetrics[key as Category] ? Object.values(allMetrics[key as Category] || {}).flat() : []}
+                  monthlyData={monthlyHistory[key as Category] || {}}
                 />
               </Col>
             );

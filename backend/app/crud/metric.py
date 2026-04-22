@@ -40,6 +40,7 @@ class MetricCRUD:
         skip: int = 0,
         limit: int = 100,
         category: Optional[str] = None,
+        dimension: Optional[str] = None,
         is_active: Optional[bool] = None,
         keyword: Optional[str] = None
     ) -> tuple[List[Metric], int]:
@@ -49,6 +50,10 @@ class MetricCRUD:
         # 分类筛选
         if category:
             query = query.filter(Metric.category == category)
+
+        # 维度筛选
+        if dimension:
+            query = query.filter(Metric.dimension == dimension)
 
         # 状态筛选
         if is_active is not None:
@@ -77,30 +82,18 @@ class MetricCRUD:
         if not db_metric:
             return None
 
-        # 记录更新前的值，用于趋势计算
-        old_value = db_metric.value
-
         # 只更新提供的字段
         update_data = metric.model_dump(exclude_unset=True)
         for field, value in update_data.items():
             setattr(db_metric, field, value)
-
-        # 自动计算趋势（当值发生变化时）
-        if 'value' in update_data and db_metric.previous_value is None:
-            db_metric.previous_value = old_value
-            if db_metric.value > old_value:
-                db_metric.trend = "up"
-            elif db_metric.value < old_value:
-                db_metric.trend = "down"
-            else:
-                db_metric.trend = "stable"
 
         db.commit()
         db.refresh(db_metric)
 
         # 如果是子产品类别指标，触发聚合重新计算
         if db_metric.category != 'overview':
-            AggregationCRUD.recompute_by_source(db, metric_id)
+            now = datetime.now()
+            AggregationCRUD.recompute_by_source(db, metric_id, now.year, now.month)
 
         return db_metric
 
@@ -161,7 +154,7 @@ class MetricCRUD:
 
     @staticmethod
     def batch_update_values(db: Session, updates: dict) -> int:
-        """批量更新指标值，并保存历史记录"""
+        """批量更新指标值，只保存历史记录到 MetricHistory"""
         count = 0
         now = datetime.now()
         current_year = now.year
@@ -171,41 +164,30 @@ class MetricCRUD:
         for code, value in updates.items():
             metric = MetricCRUD.get_by_code(db, code)
             if metric:
-                # 保存当前值到历史记录
+                # 只保存到 MetricHistory（当前年月）
                 existing_history = db.query(MetricHistory).filter(
                     MetricHistory.metric_id == metric.id,
                     MetricHistory.year == current_year,
                     MetricHistory.month == current_month
                 ).first()
                 if existing_history:
-                    existing_history.value = metric.value
+                    existing_history.value = value
                 else:
                     history = MetricHistory(
                         metric_id=metric.id,
                         year=current_year,
                         month=current_month,
-                        value=metric.value
+                        value=value
                     )
                     db.add(history)
-
-                metric.previous_value = metric.value
-                metric.value = value
-                # 自动计算趋势
-                if metric.previous_value:
-                    if value > metric.previous_value:
-                        metric.trend = "up"
-                    elif value < metric.previous_value:
-                        metric.trend = "down"
-                    else:
-                        metric.trend = "stable"
                 count += 1
                 updated_source_ids.add(metric.id)
 
         db.commit()
 
-        # 触发聚合更新：当子产品指标更新时，自动更新相关的产品部(overview)指标
+        # 触发聚合更新：当子产品指标更新时，自动更新相关的聚合指标
         for source_id in updated_source_ids:
-            AggregationCRUD.recompute_by_source(db, source_id)
+            AggregationCRUD.recompute_by_source(db, source_id, current_year, current_month)
 
         return count
 
@@ -227,11 +209,31 @@ class MetricHistoryCRUD:
         for history, metric in results:
             if metric.code not in data:
                 data[metric.code] = {}
-            data[metric.code][history.month] = history.value
+            data[metric.code][history.month] = {
+                'value': history.value,
+                'data_source_link': history.data_source_link,
+            }
         return data
 
     @staticmethod
-    def bulk_create(db: Session, records: list) -> None:
-        """批量创建历史记录"""
-        db.add_all(records)
+    def bulk_create(db: Session, records: list) -> dict:
+        """批量创建或更新历史记录"""
+        from app.models import MetricHistory
+        created = 0
+        updated = 0
+        for record in records:
+            existing = db.query(MetricHistory).filter(
+                MetricHistory.metric_id == record.metric_id,
+                MetricHistory.year == record.year,
+                MetricHistory.month == record.month
+            ).first()
+            if existing:
+                existing.value = record.value
+                if hasattr(record, 'data_source_link') and record.data_source_link is not None:
+                    existing.data_source_link = record.data_source_link
+                updated += 1
+            else:
+                db.add(record)
+                created += 1
         db.commit()
+        return {"created": created, "updated": updated}

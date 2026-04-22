@@ -54,12 +54,10 @@ class MetricBase(BaseModel):
     dimension: DimensionEnum = Field(..., description="维度: quality/efficiency/experience/business/operation")
     lower_is_better: bool = Field(True, description="达标条件: True表示越小越好, False表示越大越好")
     unit: Optional[str] = Field(None, max_length=20, description="单位")
-    value: float = Field(..., description="当前值")
     target_value: Optional[float] = Field(None, description="目标值")
     challenge_value: Optional[float] = Field(None, description="挑战值")
-    previous_value: Optional[float] = Field(None, description="上一周期值")
-    trend: Optional[TrendEnum] = Field(None, description="趋势")
     aggregation_type: AggregationTypeEnum = Field(AggregationTypeEnum.AVERAGE, description="年度汇总方式: sum(求和)/average(平均)")
+    data_source_link: Optional[str] = Field(None, max_length=500, description="数据来源链接")
     description: Optional[str] = Field(None, description="指标描述")
     is_active: bool = Field(True, description="是否启用")
 
@@ -86,12 +84,10 @@ class MetricUpdate(BaseModel):
     dimension: Optional[DimensionEnum] = None
     lower_is_better: Optional[bool] = None
     unit: Optional[str] = Field(None, max_length=20)
-    value: Optional[float] = None
     target_value: Optional[float] = None
     challenge_value: Optional[float] = None
-    previous_value: Optional[float] = None
-    trend: Optional[TrendEnum] = None
     aggregation_type: Optional[AggregationTypeEnum] = None
+    data_source_link: Optional[str] = Field(None, max_length=500)
     description: Optional[str] = None
     is_active: Optional[bool] = None
 
@@ -142,6 +138,7 @@ class MetricListRequest(BaseModel):
     skip: int = Field(0, ge=0, description="跳过记录数")
     limit: int = Field(100, ge=1, le=1000, description="返回记录数")
     category: Optional[str] = Field(None, description="分类筛选")
+    dimension: Optional[str] = Field(None, description="维度筛选")
     is_active: Optional[bool] = Field(None, description="状态筛选")
     keyword: Optional[str] = Field(None, description="关键词搜索")
 
@@ -166,12 +163,10 @@ class MetricUpdateRequest(BaseModel):
     dimension: Optional[DimensionEnum] = None
     lower_is_better: Optional[bool] = None
     unit: Optional[str] = Field(None, max_length=20)
-    value: Optional[float] = None
     target_value: Optional[float] = None
     challenge_value: Optional[float] = None
-    previous_value: Optional[float] = None
-    trend: Optional[TrendEnum] = None
     aggregation_type: Optional[AggregationTypeEnum] = None
+    data_source_link: Optional[str] = Field(None, max_length=500)
     description: Optional[str] = Field(None, max_length=500)
     is_active: Optional[bool] = None
     # 聚合配置（仅 overview 指标支持）
@@ -205,6 +200,7 @@ class MetricHistoryCreate(BaseModel):
     year: int = Field(..., ge=2020, le=2100)
     month: int = Field(..., ge=1, le=12)
     value: float
+    data_source_link: Optional[str] = Field(None, max_length=500, description="数据来源链接（可选，不填则使用指标定义时的链接）")
 
 
 class MetricHistoryResponse(BaseModel):
@@ -214,6 +210,7 @@ class MetricHistoryResponse(BaseModel):
     year: int
     month: int
     value: float
+    data_source_link: Optional[str] = None
     created_at: datetime
 
     class Config:
@@ -266,12 +263,10 @@ class MetricCreateWithAggregation(BaseModel):
     dimension: DimensionEnum = Field(..., description="维度")
     lower_is_better: bool = Field(True, description="达标条件")
     unit: Optional[str] = Field(None, max_length=20, description="单位")
-    value: float = Field(..., description="当前值")
     target_value: Optional[float] = Field(None, description="目标值")
     challenge_value: Optional[float] = Field(None, description="挑战值")
-    previous_value: Optional[float] = Field(None, description="上一周期值")
-    trend: Optional[TrendEnum] = Field(None, description="趋势")
     aggregation_type: AggregationTypeEnum = Field(AggregationTypeEnum.AVERAGE, description="年度汇总方式: sum(求和)/average(平均)")
+    data_source_link: Optional[str] = Field(None, max_length=500, description="数据来源链接")
     description: Optional[str] = Field(None, description="指标描述")
     is_active: bool = Field(True, description="是否启用")
     # 聚合配置（仅 overview 指标支持）

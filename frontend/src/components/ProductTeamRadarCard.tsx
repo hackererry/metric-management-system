@@ -4,6 +4,14 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Typography } from 'antd';
 import ReactECharts from 'echarts-for-react';
+import { Metric, Dimension, MonthlyHistoryMap } from '../types';
+import {
+  COLORS,
+  FONT_SIZES,
+  SPACING,
+  BORDER_RADIUS,
+  SHADOWS,
+} from '../styles/theme';
 
 const { Text } = Typography;
 
@@ -15,45 +23,72 @@ interface ProductTeamRadarCardProps {
   month: number | null;
   isSelected: boolean;
   onClick: () => void;
+  metrics?: Metric[];
+  monthlyData?: MonthlyHistoryMap;
 }
 
-// 获取当前年月
 const getCurrentYearMonth = () => {
   const now = new Date();
   return { year: now.getFullYear(), month: now.getMonth() + 1 };
 };
 
-// 模拟数据生成
-const generateTeamData = (teamKey: string, year: number, month: number | null) => {
+const calculateRealTeamData = (
+  metrics: Metric[] | undefined,
+  monthlyData: MonthlyHistoryMap | undefined,
+  year: number,
+  month: number | null
+) => {
   const { year: currentYear, month: currentMonth } = getCurrentYearMonth();
 
-  // 如果选择了未来月份，显示暂无数据
   if (year > currentYear || (year === currentYear && month && month > currentMonth)) {
+    return { radarData: { quality: 0, efficiency: 0, experience: 0, business: 0, operation: 0 }, noData: true };
+  }
+
+  if (!metrics || metrics.length === 0 || !monthlyData || Object.keys(monthlyData).length === 0) {
+    const seed = year + (month || 0);
+    const random = (base: number) => Math.round(base + (Math.sin(seed) * 10 + Math.random() * 5));
+    const monthFactor = month ? (0.8 + (month * 0.05)) : 1;
     return {
       radarData: {
-        quality: 0,
-        efficiency: 0,
-        experience: 0,
-        business: 0,
-        operation: 0,
+        quality: random(75 * monthFactor),
+        efficiency: random(70 * monthFactor),
+        experience: random(80 * monthFactor),
+        business: random(72 * monthFactor),
+        operation: random(78 * monthFactor),
       },
-      noData: true,
+      noData: false,
     };
   }
 
-  const seed = teamKey.charCodeAt(teamKey.length - 1) + year + (month || 0);
-  const random = (base: number) => Math.round(base + (Math.sin(seed) * 10 + Math.random() * 5));
+  const dimensionScores: Record<Dimension, number[]> = {
+    quality: [],
+    efficiency: [],
+    experience: [],
+    business: [],
+    operation: [],
+  };
 
-  // 如果选择了特定月份，数据会有月度变化
-  const monthFactor = month ? (0.8 + (month * 0.05)) : 1;
+  const currentMonthValue = month || new Date().getMonth() + 1;
+
+  metrics.forEach(m => {
+    if (!m.target_value) return;
+    const data = monthlyData[m.code]?.[currentMonthValue];
+    const value = data !== undefined ? (typeof data === 'object' ? data.value : data) : undefined;
+    if (value === undefined) return;
+
+    const met = m.lower_is_better ? value <= m.target_value : value >= m.target_value;
+    dimensionScores[m.dimension].push(met ? 100 : 50);
+  });
+
+  const calcAvg = (arr: number[]) => arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : 0;
 
   return {
     radarData: {
-      quality: random(75 * monthFactor),
-      efficiency: random(70 * monthFactor),
-      experience: random(80 * monthFactor),
-      business: random(72 * monthFactor),
-      operation: random(78 * monthFactor),
+      quality: calcAvg(dimensionScores.quality) || 0,
+      efficiency: calcAvg(dimensionScores.efficiency) || 0,
+      experience: calcAvg(dimensionScores.experience) || 0,
+      business: calcAvg(dimensionScores.business) || 0,
+      operation: calcAvg(dimensionScores.operation) || 0,
     },
     noData: false,
   };
@@ -67,14 +102,15 @@ const ProductTeamRadarCard: React.FC<ProductTeamRadarCardProps> = ({
   month,
   isSelected,
   onClick,
+  metrics,
+  monthlyData,
 }) => {
-  const [teamData, setTeamData] = useState(generateTeamData(teamKey, year, month));
+  const [teamData, setTeamData] = useState(() => calculateRealTeamData(metrics, monthlyData, year, month));
 
   useEffect(() => {
-    setTeamData(generateTeamData(teamKey, year, month));
-  }, [teamKey, year, month]);
+    setTeamData(calculateRealTeamData(metrics, monthlyData, year, month));
+  }, [teamKey, year, month, metrics, monthlyData]);
 
-  // 雷达图配置
   const radarOption = {
     tooltip: {
       trigger: 'item',
@@ -90,23 +126,23 @@ const ProductTeamRadarCard: React.FC<ProductTeamRadarCardProps> = ({
       center: ['50%', '55%'],
       radius: '60%',
       axisName: {
-        color: '#323130',
-        fontSize: 11,
+        color: COLORS.text,
+        fontSize: FONT_SIZES.sm,
         fontWeight: 500,
       },
       splitLine: {
         lineStyle: {
-          color: '#E1DFDD',
+          color: COLORS.border,
         },
       },
       splitArea: {
         areaStyle: {
-          color: ['#FAF9F8', '#FFFFFF'],
+          color: [COLORS.background, '#FFFFFF'],
         },
       },
       axisLine: {
         lineStyle: {
-          color: '#E1DFDD',
+          color: COLORS.border,
         },
       },
     },
@@ -139,7 +175,6 @@ const ProductTeamRadarCard: React.FC<ProductTeamRadarCardProps> = ({
     ],
   };
 
-  // 计算综合得分
   const totalScore = Math.round(
     (teamData.radarData.quality +
       teamData.radarData.efficiency +
@@ -148,25 +183,39 @@ const ProductTeamRadarCard: React.FC<ProductTeamRadarCardProps> = ({
       teamData.radarData.operation) / 5
   );
 
+  // 根据得分获取状态标签
+  const getScoreStatus = (): { label: string; color: string } => {
+    if (totalScore >= 90) return { label: '优秀', color: COLORS.success };
+    if (totalScore >= 70) return { label: '良好', color: COLORS.info };
+    if (totalScore >= 50) return { label: '一般', color: COLORS.warning };
+    return { label: '需改进', color: COLORS.danger };
+  };
+
+  const scoreStatus = getScoreStatus();
+
   return (
     <Card
       title={
-        <span>
-          <span style={{ color, marginRight: 8 }}>●</span>
-          {label}
-          {month && <Text type="secondary" style={{ fontSize: 12, marginLeft: 4 }}>{year}年{month}月</Text>}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.sm }}>
+          <span style={{ color, fontSize: FONT_SIZES.lg }}>●</span>
+          <span style={{ fontWeight: 500, color: COLORS.text }}>{label}</span>
+          {month && (
+            <Text type="secondary" style={{ fontSize: FONT_SIZES.sm }}>
+              {year}年{month}月
+            </Text>
+          )}
+        </div>
       }
       style={{
         height: '100%',
         cursor: 'pointer',
-        border: isSelected ? `2px solid ${color}` : '1px solid #E1DFDD',
-        boxShadow: isSelected ? `0 4px 12px ${color}30` : '0 1.6px 3.6px rgba(0, 0, 0, 0.04), 0 3.2px 7.2px rgba(0, 0, 0, 0.06)',
+        border: isSelected ? `2px solid ${color}` : `1px solid ${COLORS.border}`,
+        boxShadow: isSelected ? `0 4px 12px ${color}30` : SHADOWS.sm,
         transition: 'all 0.2s ease',
-        borderRadius: 8,
+        borderRadius: BORDER_RADIUS.lg,
       }}
       styles={{
-        body: { padding: 16 }
+        body: { padding: SPACING.base }
       }}
       onClick={onClick}
       hoverable
@@ -184,14 +233,35 @@ const ProductTeamRadarCard: React.FC<ProductTeamRadarCardProps> = ({
         />
       )}
 
-      {/* 综合得分 */}
-      <div style={{ textAlign: 'center', marginBottom: 8 }}>
+      {/* 综合得分区域 */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: SPACING.md,
+        padding: `${SPACING.sm}px 0`,
+      }}>
         {teamData.noData ? (
           <Text type="secondary">-</Text>
         ) : (
           <>
-            <Text style={{ color: '#605E5C' }}>综合得分：</Text>
-            <Text strong style={{ fontSize: 20, color, fontWeight: 600 }}>{totalScore}分</Text>
+            <div style={{ textAlign: 'center' }}>
+              <Text style={{ fontSize: FONT_SIZES.xs, color: COLORS.secondary }}>综合得分</Text>
+              <div style={{ fontSize: FONT_SIZES.xxl, fontWeight: 600, color }}>
+                {totalScore}
+                <Text style={{ fontSize: FONT_SIZES.sm, color: COLORS.secondary }}> 分</Text>
+              </div>
+            </div>
+            <div style={{
+              padding: `${SPACING.xs}px ${SPACING.sm}px`,
+              backgroundColor: `${scoreStatus.color}15`,
+              borderRadius: BORDER_RADIUS.md,
+              border: `1px solid ${scoreStatus.color}30`,
+            }}>
+              <Text style={{ fontSize: FONT_SIZES.sm, fontWeight: 500, color: scoreStatus.color }}>
+                {scoreStatus.label}
+              </Text>
+            </div>
           </>
         )}
       </div>

@@ -59,6 +59,8 @@ const MetricForm: React.FC<MetricFormProps> = ({
   // 统一的聚合类型和权重
   const [aggregationType, setAggregationType] = useState<AggregationType>('average');
   const [aggregationWeight, setAggregationWeight] = useState<number>(1.0);
+  // 聚合配置启用开关（仅总览指标）
+  const [aggregationEnabled, setAggregationEnabled] = useState<boolean>(false);
   const [loadingSources, setLoadingSources] = useState(false);
 
   // 过滤状态
@@ -90,6 +92,8 @@ const MetricForm: React.FC<MetricFormProps> = ({
         setAggregationWeight(configs[0].weight);
         // 提取所有源指标ID
         setSelectedSourceIds(configs.map(c => c.source_metric_id));
+        // 启用聚合配置开关
+        setAggregationEnabled(true);
       }
     } catch (error: any) {
       console.error('加载聚合配置失败', error);
@@ -115,12 +119,10 @@ const MetricForm: React.FC<MetricFormProps> = ({
           dimension: metric.dimension,
           lower_is_better: metric.lower_is_better !== undefined ? metric.lower_is_better : true,
           unit: metric.unit || '',
-          value: metric.value,
           target_value: metric.target_value,
           challenge_value: metric.challenge_value,
-          previous_value: metric.previous_value,
-          trend: metric.trend,
           aggregation_type: metric.aggregation_type || 'average',
+          data_source_link: metric.data_source_link || '',
           description: metric.description || '',
           is_active: metric.is_active,
         });
@@ -133,6 +135,7 @@ const MetricForm: React.FC<MetricFormProps> = ({
         setSelectedSourceIds([]);
         setAggregationType('average');
         setAggregationWeight(1.0);
+        setAggregationEnabled(false);
         setFilterLowerIsBetter(undefined);
         setFilterUnit(undefined);
         setFilterDataType(undefined);
@@ -319,20 +322,32 @@ const MetricForm: React.FC<MetricFormProps> = ({
           </Col>
         </Row>
 
-        {/* 来源指标配置区域（仅 overview 指标显示） */}
+        {/* 来源指标配置区域（仅 overview 指标显示，且启用了聚合配置） */}
         {selectedCategory === 'overview' && (
           <>
-            <Divider orientation="left">聚合配置</Divider>
-            <Paragraph type="secondary" style={{ marginBottom: 16 }}>
-              选择子产品指标，这些指标的值将聚合到当前产品部指标
-            </Paragraph>
+            <Divider orientation="left">
+              聚合配置
+              <Switch
+                size="small"
+                checked={aggregationEnabled}
+                onChange={setAggregationEnabled}
+                checkedChildren="启用"
+                unCheckedChildren="停用"
+                style={{ marginLeft: 12 }}
+              />
+            </Divider>
+            {aggregationEnabled && (
+              <>
+                <Paragraph type="secondary" style={{ marginBottom: 16 }}>
+                  选择子产品指标，这些指标的值将聚合到当前产品部指标
+                </Paragraph>
 
-            {/* 统一的聚合方式配置 */}
-            <Row gutter={16} style={{ marginBottom: 16 }}>
-              <Col span={8}>
-                <Form.Item label="聚合方式" style={{ marginBottom: 8 }}>
-                  <Select
-                    value={aggregationType}
+                {/* 统一的聚合方式配置 */}
+                <Row gutter={16} style={{ marginBottom: 16 }}>
+                  <Col span={8}>
+                    <Form.Item label="聚合方式" style={{ marginBottom: 8 }}>
+                      <Select
+                        value={aggregationType}
                     onChange={(val) => setAggregationType(val)}
                     style={{ width: '100%' }}
                   >
@@ -505,6 +520,8 @@ const MetricForm: React.FC<MetricFormProps> = ({
                 style={{ marginBottom: 16 }}
               />
             )}
+              </>
+            )}
           </>
         )}
 
@@ -565,20 +582,7 @@ const MetricForm: React.FC<MetricFormProps> = ({
         </Row>
 
         <Row gutter={16}>
-          <Col span={8}>
-            <Form.Item
-              name="value"
-              label={hasSourceConfigs ? "实际值（自动计算）" : "实际值"}
-              rules={hasSourceConfigs ? [] : [{ required: true, message: '请输入实际值' }]}
-            >
-              <InputNumber
-                style={{ width: '100%' }}
-                placeholder="实际值"
-                disabled={hasSourceConfigs}
-              />
-            </Form.Item>
-          </Col>
-          <Col span={8}>
+          <Col span={12}>
             <Form.Item name="target_value" label="达标值">
               <InputNumber
                 style={{ width: '100%' }}
@@ -587,7 +591,7 @@ const MetricForm: React.FC<MetricFormProps> = ({
               />
             </Form.Item>
           </Col>
-          <Col span={8}>
+          <Col span={12}>
             <Form.Item name="challenge_value" label="挑战值">
               <InputNumber
                 style={{ width: '100%' }}
@@ -598,35 +602,12 @@ const MetricForm: React.FC<MetricFormProps> = ({
           </Col>
         </Row>
 
-        <Row gutter={16}>
-          <Col span={12}>
-            <Form.Item name="previous_value" label="上一周期值">
-              <InputNumber
-                style={{ width: '100%' }}
-                placeholder="用于计算环比"
-                disabled={hasSourceConfigs}
-              />
-            </Form.Item>
-          </Col>
-          <Col span={12}>
-            <Form.Item name="trend" label="趋势">
-              <Select placeholder="请选择趋势" allowClear disabled={hasSourceConfigs}>
-                <Option value="up">
-                  <span style={{ color: '#52c41a' }}>↑ 上升</span>
-                </Option>
-                <Option value="down">
-                  <span style={{ color: '#ff4d4f' }}>↓ 下降</span>
-                </Option>
-                <Option value="stable">
-                  <span style={{ color: '#8c8c8c' }}>→ 持平</span>
-                </Option>
-              </Select>
-            </Form.Item>
-          </Col>
-        </Row>
-
         <Form.Item name="description" label="指标描述">
           <TextArea rows={3} placeholder="请输入指标描述" maxLength={500} />
+        </Form.Item>
+
+        <Form.Item name="data_source_link" label="数据来源链接">
+          <Input placeholder="请输入数据来源链接，如: https://example.com/dashboard" />
         </Form.Item>
 
         <Form.Item
