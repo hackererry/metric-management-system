@@ -166,6 +166,11 @@ async def batch_create_history(
     # 构建对象并批量写入
     objs = [MetricHistory(**r.model_dump()) for r in records]
     result = MetricHistoryCRUD.bulk_create(db, objs)
+
+    # 重算所有被更新的源指标的聚合目标
+    for record in records:
+        AggregationCRUD.recompute_by_source(db, record.metric_id, record.year, record.month)
+
     return {"code": 200, "message": f"成功写入 {result['created']} 条，更新 {result['updated']} 条"}
 
 

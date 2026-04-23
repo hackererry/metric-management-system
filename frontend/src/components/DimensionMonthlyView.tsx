@@ -9,6 +9,15 @@ import MonthlyLineChart from './MonthlyLineChart';
 
 const { Text } = Typography;
 
+// 补全 URL 协议前缀
+const normalizeUrl = (url: string | null | undefined): string | null => {
+  if (!url) return null;
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    return 'https://' + url;
+  }
+  return url;
+};
+
 interface DimensionMonthlyViewProps {
   dimension: Dimension;
   metrics: Metric[];
@@ -52,7 +61,7 @@ const DimensionMonthlyView: React.FC<DimensionMonthlyViewProps> = ({
       render: (_: any, record: Metric) => {
         const data = monthlyData[record.code]?.[currentMonth];
         const historyData = data !== undefined ? (typeof data === 'object' ? data : { value: data, data_source_link: null }) : null;
-        const dataSourceLink = historyData?.data_source_link || record.data_source_link;
+        const dataSourceLink = normalizeUrl(historyData?.data_source_link || record.data_source_link);
         const value = data !== undefined ? (typeof data === 'object' ? data.value : data) : undefined;
         if (value === undefined || value === null) return <Text type="secondary">-</Text>;
         const isMet = record.target_value
@@ -114,7 +123,7 @@ const DimensionMonthlyView: React.FC<DimensionMonthlyViewProps> = ({
       render: (_: any, record: Metric) => {
         const data = monthlyData[record.code]?.[i + 1];
         const historyData = data !== undefined ? (typeof data === 'object' ? data : { value: data, data_source_link: null }) : null;
-        const dataSourceLink = historyData?.data_source_link || record.data_source_link;
+        const dataSourceLink = normalizeUrl(historyData?.data_source_link || record.data_source_link);
         const value = data !== undefined ? (typeof data === 'object' ? data.value : data) : undefined;
         if (value === undefined || value === null) return <Text type="secondary">-</Text>;
         // 根据是否达标着色

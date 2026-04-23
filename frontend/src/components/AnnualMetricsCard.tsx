@@ -20,6 +20,15 @@ import {
 
 const { Text } = Typography;
 
+// 补全 URL 协议前缀
+const normalizeUrl = (url: string | null | undefined): string | null => {
+  if (!url) return null;
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    return 'https://' + url;
+  }
+  return url;
+};
+
 interface AnnualMetricsCardProps {
   year: number;
   month?: number | null;
@@ -303,8 +312,8 @@ const AnnualMetricsCard: React.FC<AnnualMetricsCardProps> = ({ year, month, over
       const hasValue = calculatedValue !== null;
       const historyData = getHistoryData(metric, displayMonth);
 
-      // 优先使用历史记录中的链接，否则使用指标定义时的链接
-      const dataSourceLink = historyData?.data_source_link || metric.data_source_link;
+      // 优先使用历史记录中的链接，否则使用指标定义时的链接，并补全协议前缀
+      const dataSourceLink = normalizeUrl(historyData?.data_source_link || metric.data_source_link);
 
       // 判断是否达标
       const isMet = hasValue && metric.target_value
@@ -491,7 +500,7 @@ const AnnualMetricsCard: React.FC<AnnualMetricsCardProps> = ({ year, month, over
           }
           const data = monthlyHistory[record.code]?.[idx + 1];
           const historyData = data !== undefined ? (typeof data === 'object' ? data : { value: data, data_source_link: null }) : null;
-          const dataSourceLink = historyData?.data_source_link || record.data_source_link;
+          const dataSourceLink = normalizeUrl(historyData?.data_source_link || record.data_source_link);
           const value = data !== undefined ? (typeof data === 'object' ? data.value : data) : undefined;
           if (value === undefined) return <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.xs }}>-</Text>;
           const isMet = record.target_value

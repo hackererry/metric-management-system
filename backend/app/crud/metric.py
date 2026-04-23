@@ -198,6 +198,37 @@ class MetricHistoryCRUD:
     @staticmethod
     def get_monthly_data_for_category(db: Session, category: str, year: int) -> dict:
         """获取指定分类和年份的所有指标月度历史数据"""
+        # overview 类别：有聚合配置的指标实时计算，无聚合配置的指标使用存储值
+        if category == 'overview':
+            overview_metrics = db.query(Metric).filter(
+                Metric.category == 'overview',
+                Metric.is_active == True
+            ).all()
+            data = {}
+            for metric in overview_metrics:
+                # 检查是否有聚合配置
+                configs = AggregationCRUD.get_configs_by_target(db, metric.id)
+                if configs:
+                    # 有聚合配置 → 实时计算
+                    computed = AggregationCRUD.compute_for_year(db, metric.id, year)
+                    if computed:
+                        data[metric.code] = computed
+                else:
+                    # 无聚合配置 → 读取存储的历史数据
+                    history_records = db.query(MetricHistory).filter(
+                        MetricHistory.metric_id == metric.id,
+                        MetricHistory.year == year
+                    ).all()
+                    if history_records:
+                        data[metric.code] = {}
+                        for h in history_records:
+                            data[metric.code][h.month] = {
+                                'value': h.value,
+                                'data_source_link': h.data_source_link,
+                            }
+            return data
+
+        # sub-product 类别使用存储的历史数据
         results = db.query(MetricHistory, Metric).join(
             Metric, MetricHistory.metric_id == Metric.id
         ).filter(

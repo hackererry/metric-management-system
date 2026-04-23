@@ -93,6 +93,44 @@ class AggregationCRUD:
         return round(result, 2)
 
     @staticmethod
+    def compute_for_year(db: Session, target_metric_id: int, year: int) -> dict:
+        """计算目标指标全年聚合值，返回 {month: {'value': float, 'data_source_link': None}}"""
+        configs = AggregationCRUD.get_configs_by_target(db, target_metric_id)
+        if not configs:
+            return {}
+
+        result = {}
+        for month in range(1, 13):
+            values = []
+            weights = []
+            for cfg in configs:
+                source_history = db.query(MetricHistory).filter(
+                    MetricHistory.metric_id == cfg.source_metric_id,
+                    MetricHistory.year == year,
+                    MetricHistory.month == month
+                ).first()
+                if source_history:
+                    values.append(source_history.value * cfg.weight)
+                    weights.append(cfg.weight)
+
+            if values:
+                first_type = configs[0].aggregation_type
+                if first_type == "sum":
+                    computed_value = sum(values)
+                else:
+                    total_weight = sum(weights)
+                    if total_weight == 0:
+                        computed_value = sum(values) / len(values)
+                    else:
+                        computed_value = sum(values) / len(values) if len(values) == 1 else sum(values) / total_weight * sum(weights)
+                result[month] = {
+                    'value': round(computed_value, 2),
+                    'data_source_link': None
+                }
+
+        return result
+
+    @staticmethod
     def recompute_by_source(db: Session, source_metric_id: int, year: int, month: int) -> List[int]:
         """当源指标更新时，重新计算所有相关的目标指标，并将结果写入 MetricHistory"""
         # 找到所有以该源指标为来源的目标指标
@@ -100,6 +138,12 @@ class AggregationCRUD:
         updated_target_ids = []
 
         for cfg in configs:
+            # 检查目标指标类别，overview 类别在查询时实时计算，跳过写入
+            target_metric = db.query(Metric).filter(Metric.id == cfg.target_metric_id).first()
+            if target_metric and target_metric.category == 'overview':
+                updated_target_ids.append(cfg.target_metric_id)
+                continue
+
             # 计算新的聚合值
             new_value = AggregationCRUD.compute_aggregated_value(db, cfg.target_metric_id, year, month)
             if new_value is not None:

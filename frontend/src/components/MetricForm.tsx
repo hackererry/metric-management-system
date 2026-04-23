@@ -94,6 +94,10 @@ const MetricForm: React.FC<MetricFormProps> = ({
         setSelectedSourceIds(configs.map(c => c.source_metric_id));
         // 启用聚合配置开关
         setAggregationEnabled(true);
+      } else {
+        // 无聚合配置时，明确重置为 false
+        setSelectedSourceIds([]);
+        setAggregationEnabled(false);
       }
     } catch (error: any) {
       console.error('加载聚合配置失败', error);
@@ -215,13 +219,18 @@ const MetricForm: React.FC<MetricFormProps> = ({
     try {
       const values = await form.validateFields();
       // 如果是 overview 指标，附加 source_configs
-      if (values.category === 'overview' && selectedSourceIds.length > 0) {
-        // 构建统一的聚合配置
-        values.source_configs = selectedSourceIds.map(id => ({
-          source_metric_id: id,
-          aggregation_type: aggregationType,
-          weight: aggregationWeight,
-        }));
+      if (values.category === 'overview') {
+        if (aggregationEnabled === false) {
+          // 停用聚合配置时，显式发送空数组通知后端清除
+          values.source_configs = [];
+        } else if (selectedSourceIds.length > 0) {
+          // 构建统一的聚合配置
+          values.source_configs = selectedSourceIds.map(id => ({
+            source_metric_id: id,
+            aggregation_type: aggregationType,
+            weight: aggregationWeight,
+          }));
+        }
       }
       await onSubmit(values as MetricFormData);
       message.success(isEdit ? '更新成功' : '创建成功');
