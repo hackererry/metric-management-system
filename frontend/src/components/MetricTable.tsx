@@ -164,12 +164,12 @@ const MetricTable: React.FC = () => {
       render: (type: string) => DATA_TYPE_CONFIG[type as keyof typeof DATA_TYPE_CONFIG]?.label || type,
     },
     {
-      title: '目标值',
+      title: '达标值',
       dataIndex: 'target_value',
       key: 'target_value',
       width: 100,
       render: (value: number | null, record: Metric) => {
-        if (!value) return '-';
+        if (value === null || value === undefined) return '-';
         const display =
           record.data_type === 'percentage'
             ? `${value.toFixed(1)}%`

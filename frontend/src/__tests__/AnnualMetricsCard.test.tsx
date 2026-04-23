@@ -79,7 +79,7 @@ describe('components/AnnualMetricsCard', () => {
     expect(npsMetric?.lower_is_better).toBe(false);
   });
 
-  it('目标值应该存在', () => {
+  it('达标值应该存在', () => {
     const metric = mockMetrics[0];
     expect(metric.target_value).toBe(20);
   });

@@ -19,7 +19,7 @@ class ProjectStatusEnum(str, Enum):
 class SpecialProjectTargetBase(BaseModel):
     """目标基础模型"""
     target_name: str = Field(..., min_length=1, max_length=100, description="目标名称")
-    target_value: float = Field(..., description="目标值")
+    target_value: float = Field(..., description="达标值")
     current_value: float = Field(0, description="当前值")
     unit: Optional[str] = Field(None, max_length=20, description="单位")
     weight: float = Field(1.0, ge=0, le=1, description="权重")
@@ -124,7 +124,7 @@ class SpecialProjectTargetCreateRequest(BaseModel):
     """创建目标请求"""
     project_id: int = Field(..., description="项目ID")
     target_name: str = Field(..., min_length=1, max_length=100, description="目标名称")
-    target_value: float = Field(..., description="目标值")
+    target_value: float = Field(..., description="达标值")
     current_value: float = Field(0, description="当前值")
     unit: Optional[str] = Field(None, max_length=20, description="单位")
     weight: float = Field(1.0, ge=0, le=1, description="权重")

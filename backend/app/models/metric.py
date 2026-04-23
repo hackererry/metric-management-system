@@ -17,7 +17,7 @@ class Metric(Base):
     dimension = Column(String(20), nullable=False, comment="维度: quality/efficiency/experience/business/operation")
     lower_is_better = Column(Boolean, default=True, comment="达标条件: True表示越小越好, False表示越大越好")
     unit = Column(String(20), comment="单位")
-    target_value = Column(Float, comment="目标值")
+    target_value = Column(Float, comment="达标值")
     challenge_value = Column(Float, nullable=True, comment="挑战值")
     aggregation_type = Column(String(20), default="average", comment="年度汇总方式: sum(求和)/average(平均)")
     data_source_link = Column(String(500), nullable=True, comment="数据来源链接")

@@ -180,7 +180,7 @@ const SpecialProjectForm: React.FC<SpecialProjectFormProps> = ({
               </Col>
               <Col span={4}>
                 <InputNumber
-                  placeholder="目标值"
+                  placeholder="达标值"
                   value={target.target_value}
                   onChange={(value) => handleTargetChange(index, 'target_value', value)}
                   style={{ width: '100%' }}

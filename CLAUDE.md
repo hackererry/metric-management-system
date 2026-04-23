@@ -99,7 +99,7 @@ metric-management-system/
 | lower_is_better | bool | 达标规则（True=越低越好，默认True） |
 | unit | str(20) | 单位 |
 | value | float | 当前值 |
-| target_value | float | 目标值 |
+| target_value | float | 达标值 |
 | challenge_value | float | 挑战值 |
 | previous_value | float | 上期值 |
 | trend | str(10) | 趋势：up / down / stable |
@@ -124,7 +124,7 @@ metric-management-system/
 | id | int PK | 主键 |
 | project_id | int FK | 项目 ID（CASCADE） |
 | metric_id | int FK | 指标 ID（CASCADE） |
-| target_value | float | 覆盖目标值 |
+| target_value | float | 覆盖达标值 |
 
 唯一约束：`(project_id, metric_id)`
 

@@ -336,7 +336,7 @@ npm test -- --watch
 | lower_is_better | bool | 达标规则 |
 | unit | string | 单位 |
 | value | float | 当前值 |
-| target_value | float | 目标值 |
+| target_value | float | 达标值 |
 | previous_value | float | 上期值 |
 | trend | enum | 趋势（上升/下降/持平） |
 | description | string | 描述 |

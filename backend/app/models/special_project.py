@@ -32,7 +32,7 @@ class SpecialProjectTarget(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     project_id = Column(Integer, ForeignKey("special_projects.id", ondelete="CASCADE"), nullable=False, comment="关联项目ID")
     target_name = Column(String(100), nullable=False, comment="目标名称")
-    target_value = Column(Float, nullable=False, comment="目标值")
+    target_value = Column(Float, nullable=False, comment="达标值")
     current_value = Column(Float, default=0, comment="当前值")
     unit = Column(String(20), nullable=True, comment="单位")
     weight = Column(Float, default=1.0, comment="权重")

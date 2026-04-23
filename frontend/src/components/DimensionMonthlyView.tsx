@@ -78,7 +78,7 @@ const DimensionMonthlyView: React.FC<DimensionMonthlyViewProps> = ({
       key: 'target_value',
       width: 100,
       render: (_: any, record: Metric) => {
-        if (!record.target_value) return '-';
+        if (record.target_value === null || record.target_value === undefined) return '-';
         return record.unit
           ? `${record.target_value.toLocaleString()} ${record.unit}`
           : record.target_value.toLocaleString();
@@ -90,7 +90,7 @@ const DimensionMonthlyView: React.FC<DimensionMonthlyViewProps> = ({
       key: 'challenge_value',
       width: 100,
       render: (_: any, record: Metric) => {
-        if (!record.challenge_value) return '-';
+        if (record.challenge_value === null || record.challenge_value === undefined) return '-';
         return record.unit
           ? `${record.challenge_value.toLocaleString()} ${record.unit}`
           : record.challenge_value.toLocaleString();

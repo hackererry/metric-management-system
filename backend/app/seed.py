@@ -487,8 +487,8 @@ def _seed_monthly_history(db, metrics):
     history_records = []
     for metric in metrics:
         for month in range(1, current_month + 1):
-            # 基于目标值生成有趋势的月度数据
-            # 越早的月份越远离目标值（模拟改善趋势）
+            # 基于达标值生成有趋势的月度数据
+            # 越早的月份越远离达标值（模拟改善趋势）
             months_back = current_month - month
             if metric.lower_is_better:
                 # 越小越好：早期值更大

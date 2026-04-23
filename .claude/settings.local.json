@@ -34,7 +34,18 @@
       "Bash(python -c \"from app.main import app; print\\('Backend import OK'\\)\")",
       "Bash(python:*)",
       "Bash(npm run:*)",
-      "Bash(npx jest:*)"
+      "Bash(npx jest:*)",
+      "Bash(rm metrics_final.db)",
+      "Bash(mkdir -p db)",
+      "Bash(docker volume *)",
+      "Bash(docker run *)",
+      "Bash(docker restart *)",
+      "Bash(docker system *)",
+      "Bash(cmd.exe *)",
+      "Bash(pytest backend/tests/test_api.py -v -k \"history\")",
+      "Bash(pytest backend/tests/test_api.py -v)",
+      "Bash(pytest backend/tests/test_crud.py -v)",
+      "Bash(git add *)"
     ]
   }
 }

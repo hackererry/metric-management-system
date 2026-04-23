@@ -57,7 +57,7 @@ const MonthlyLineChart: React.FC<MonthlyLineChartProps> = ({
         itemStyle: { color },
         symbol: 'circle',
         symbolSize: 6,
-        // 如果有目标值，添加参考线
+        // 如果有达标值，添加参考线
         markLine: metric.target_value ? {
           silent: true,
           symbol: 'none',

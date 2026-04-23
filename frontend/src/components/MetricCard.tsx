@@ -110,7 +110,7 @@ const MetricCard: React.FC<MetricCardProps> = ({ metric, currentValue, previousV
         />
       </div>
 
-      {/* 目标区域 */}
+      {/* 达标区域 */}
       {metric.target_value && currentValue !== null && (
         <div style={{
           display: 'flex',
@@ -119,7 +119,7 @@ const MetricCard: React.FC<MetricCardProps> = ({ metric, currentValue, previousV
           fontSize: FONT_SIZES.sm,
           color: COLORS.textLight,
         }}>
-          <span>目标: {formatValue(metric.target_value, metric.data_type, metric.unit)}</span>
+          <span>达标: {formatValue(metric.target_value, metric.data_type, metric.unit)}</span>
         </div>
       )}
 

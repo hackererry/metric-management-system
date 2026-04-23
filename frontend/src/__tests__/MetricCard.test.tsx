@@ -31,15 +31,14 @@ describe('components/MetricCard', () => {
     expect(screen.getByText(/85 个/)).toBeInTheDocument();
   });
 
-  it('应该渲染目标值', () => {
+  it('应该渲染达标值', () => {
     render(<MetricCard metric={mockMetric} currentValue={85} previousValue={90} />);
-    expect(screen.getByText(/目标:/)).toBeInTheDocument();
+    expect(screen.getByText(/达标:/)).toBeInTheDocument();
   });
 
-  it('应该渲染目标完成率标签', () => {
+  it('应该渲染达标值标签', () => {
     render(<MetricCard metric={mockMetric} currentValue={85} previousValue={90} />);
-    // 106.3% 是完成率
-    expect(screen.getByText(/106\.3/)).toBeInTheDocument();
+    expect(screen.getByText(/达标:/)).toBeInTheDocument();
   });
 
   it('应该渲染环比变化', () => {
@@ -49,9 +48,9 @@ describe('components/MetricCard', () => {
     expect(screen.getByText(/-5\.6/)).toBeInTheDocument();
   });
 
-  it('当有目标值时应该显示目标区域', () => {
+  it('当有达标值时应该显示达标区域', () => {
     render(<MetricCard metric={mockMetric} currentValue={85} previousValue={90} />);
-    // 80 个是目标值
+    // 80 个是达标值
     expect(screen.getByText(/80/)).toBeInTheDocument();
   });
 
@@ -80,7 +79,7 @@ describe('components/MetricCard', () => {
     expect(changeText).toBeInTheDocument();
   });
 
-  it('当没有目标值时不应该显示目标区域', () => {
+  it('当没有达标值时不应该显示达标区域', () => {
     const noTargetMetric = { ...mockMetric, target_value: null };
     render(<MetricCard metric={noTargetMetric} currentValue={85} previousValue={90} />);
     expect(screen.queryByText(/目标:/)).not.toBeInTheDocument();

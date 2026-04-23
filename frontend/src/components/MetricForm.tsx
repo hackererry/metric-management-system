@@ -514,7 +514,7 @@ const MetricForm: React.FC<MetricFormProps> = ({
             {/* 提示信息 */}
             {hasSourceConfigs && (
               <Alert
-                message="已配置子产品数据来源，实际值、目标值等数据将由聚合计算自动生成，无需手动填写"
+                message="已配置子产品数据来源，实际值、达标值等数据将由聚合计算自动生成，无需手动填写"
                 type="info"
                 showIcon
                 style={{ marginBottom: 16 }}

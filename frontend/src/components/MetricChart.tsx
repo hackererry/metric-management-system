@@ -63,7 +63,7 @@ const MetricChart: React.FC<MetricChartProps> = ({
           let html = `<div style="font-weight:bold">${metric.name}</div>`;
           html += `<div>当前值: ${value !== null ? value.toLocaleString() : '-'} ${metric.unit || ''}</div>`;
           if (metric.target_value) {
-            html += `<div>目标值: ${metric.target_value.toLocaleString()} ${metric.unit || ''}</div>`;
+            html += `<div>达标值: ${metric.target_value.toLocaleString()} ${metric.unit || ''}</div>`;
           }
           if (previousValue !== undefined && previousValue !== 0 && value !== null) {
             const change = (((value - previousValue) / previousValue) * 100).toFixed(1);
@@ -73,7 +73,7 @@ const MetricChart: React.FC<MetricChartProps> = ({
         },
       },
       legend: {
-        data: ['当前值', '目标值'],
+        data: ['当前值', '达标值'],
         bottom: 0,
       },
       grid: {
@@ -114,7 +114,7 @@ const MetricChart: React.FC<MetricChartProps> = ({
           barMaxWidth: 40,
         },
         {
-          name: '目标值',
+          name: '达标值',
           type: 'line',
           data: targets,
           symbol: 'circle',

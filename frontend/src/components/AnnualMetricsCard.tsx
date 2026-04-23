@@ -365,7 +365,7 @@ const AnnualMetricsCard: React.FC<AnnualMetricsCardProps> = ({ year, month, over
             </div>
 
             {/* 目标 */}
-            {metric.target_value && (
+            {metric.target_value !== null && metric.target_value !== undefined && (
               <div style={{ marginBottom: SPACING.xs }}>
                 <Text style={{ fontSize: FONT_SIZES.xs, color: COLORS.textLight }}>
                   目标: {metric.target_value?.toLocaleString()}{metric.unit || ''}
@@ -469,12 +469,12 @@ const AnnualMetricsCard: React.FC<AnnualMetricsCardProps> = ({ year, month, over
         ellipsis: true,
       },
       {
-        title: '目标值',
+        title: '达标值',
         dataIndex: 'target_value',
         key: 'target_value',
         width: 65,
         render: (target: number | null, record: Metric) => {
-          if (!target) return '-';
+          if (target === null || target === undefined) return '-';
           const displayValue = record.unit
             ? `${target.toLocaleString()} ${record.unit}`
             : target.toLocaleString();
