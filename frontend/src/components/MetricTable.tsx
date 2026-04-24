@@ -34,6 +34,7 @@ import {
 } from '../types';
 import { metricApi } from '../services/api';
 import MetricForm from './MetricForm';
+import { hasWritePermission, getIPPermission } from '../services/ipAuth';
 
 const { Option } = Select;
 const { Search } = Input;
@@ -50,6 +51,8 @@ const MetricTable: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<boolean | undefined>();
   const [formVisible, setFormVisible] = useState(false);
   const [currentMetric, setCurrentMetric] = useState<Metric | null>(null);
+  const [canWrite, setCanWrite] = useState(false);
+  const [categoryPermissions, setCategoryPermissions] = useState<Record<string, boolean>>({});
 
   // 加载数据
   const loadData = async () => {
@@ -72,6 +75,25 @@ const MetricTable: React.FC = () => {
     }
   };
 
+  // 加载IP权限
+  const loadPermissions = async () => {
+    const permission = await getIPPermission();
+    setCanWrite(permission.is_whitelisted);
+
+    // 为每个分类检查写权限
+    const categoryPerms: Record<string, boolean> = {};
+    const categories = ['overview', 'product_a', 'product_b', 'product_c', 'product_d'];
+    for (const cat of categories) {
+      categoryPerms[cat] = permission.is_whitelisted &&
+        (permission.permissions.includes('all') || permission.permissions.includes(cat));
+    }
+    setCategoryPermissions(categoryPerms);
+  };
+
+  useEffect(() => {
+    loadPermissions();
+  }, []);
+
   useEffect(() => {
     loadData();
   }, [page, pageSize, keyword, categoryFilter, dimensionFilter, statusFilter]);
@@ -82,7 +104,11 @@ const MetricTable: React.FC = () => {
   }, [keyword, categoryFilter, dimensionFilter, statusFilter]);
 
   // 删除指标
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: number, category: string) => {
+    if (!categoryPermissions[category]) {
+      message.error('当前IP没有对该分类指标的写权限');
+      return;
+    }
     try {
       await metricApi.delete(id);
       message.success('删除成功');
@@ -94,6 +120,10 @@ const MetricTable: React.FC = () => {
 
   // 切换状态
   const handleToggleStatus = async (metric: Metric) => {
+    if (!categoryPermissions[metric.category]) {
+      message.error('当前IP没有对该分类指标的写权限');
+      return;
+    }
     try {
       await metricApi.update(metric.id, { is_active: !metric.is_active });
       message.success('状态更新成功');
@@ -115,14 +145,27 @@ const MetricTable: React.FC = () => {
 
   // 打开编辑表单
   const handleEdit = (metric: Metric) => {
+    if (!categoryPermissions[metric.category]) {
+      message.error('当前IP没有对该分类指标的写权限');
+      return;
+    }
     setCurrentMetric(metric);
     setFormVisible(true);
   };
 
   // 打开新增表单
   const handleAdd = () => {
+    if (!canWrite) {
+      message.error('当前IP没有写权限');
+      return;
+    }
     setCurrentMetric(null);
     setFormVisible(true);
+  };
+
+  // 检查是否有任意分类的写权限
+  const hasAnyWritePermission = () => {
+    return Object.values(categoryPermissions).some(v => v);
   };
 
   // 表格列定义
@@ -189,6 +232,7 @@ const MetricTable: React.FC = () => {
           checked={active}
           onChange={() => handleToggleStatus(record)}
           size="small"
+          disabled={!categoryPermissions[record.category]}
           style={{ backgroundColor: active ? '#107C10' : '#C8C6C4' }}
         />
       ),
@@ -197,28 +241,32 @@ const MetricTable: React.FC = () => {
       title: '操作',
       key: 'action',
       width: 150,
-      render: (_: any, record: Metric) => (
-        <Space>
-          <Button
-            type="link"
-            size="small"
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-          >
-            编辑
-          </Button>
-          <Popconfirm
-            title="确定删除此指标吗？"
-            onConfirm={() => handleDelete(record.id)}
-            okText="确定"
-            cancelText="取消"
-          >
-            <Button type="link" size="small" danger icon={<DeleteOutlined />}>
-              删除
+      render: (_: any, record: Metric) => {
+        const hasPermission = categoryPermissions[record.category];
+        return (
+          <Space>
+            <Button
+              type="link"
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => handleEdit(record)}
+              disabled={!hasPermission}
+            >
+              编辑
             </Button>
-          </Popconfirm>
-        </Space>
-      ),
+            <Popconfirm
+              title="确定删除此指标吗？"
+              onConfirm={() => handleDelete(record.id, record.category)}
+              okText="确定"
+              cancelText="取消"
+            >
+              <Button type="link" size="small" danger icon={<DeleteOutlined />} disabled={!hasPermission}>
+                删除
+              </Button>
+            </Popconfirm>
+          </Space>
+        );
+      },
     },
   ];
 
@@ -278,9 +326,11 @@ const MetricTable: React.FC = () => {
             <Button icon={<ReloadOutlined />} onClick={loadData}>
               刷新
             </Button>
-            <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-              新增指标
-            </Button>
+            {hasAnyWritePermission() && (
+              <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+                新增指标
+              </Button>
+            )}
           </Space>
         </Col>
       </Row>
@@ -312,6 +362,7 @@ const MetricTable: React.FC = () => {
         metric={currentMetric}
         onCancel={() => setFormVisible(false)}
         onSubmit={handleSubmit}
+        categoryPermissions={categoryPermissions}
       />
     </Card>
   );

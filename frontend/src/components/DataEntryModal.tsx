@@ -15,10 +15,12 @@ import {
   Col,
   Card,
   Typography,
+  Alert,
 } from 'antd';
 import { SaveOutlined, ReloadOutlined } from '@ant-design/icons';
 import { Metric, Category, Dimension, CATEGORY_CONFIG, DIMENSION_CONFIG } from '../types';
 import { metricApi } from '../services/api';
+import { getIPPermission } from '../services/ipAuth';
 
 const { Option } = Select;
 const { Text } = Typography;
@@ -51,6 +53,9 @@ const DataEntryModal: React.FC<DataEntryModalProps> = ({ visible, onCancel }) =>
   const [aggregatedMetricIds, setAggregatedMetricIds] = useState<Set<number>>(new Set());
   // 已有数据（当前录入月份的已有值）
   const [existingValues, setExistingValues] = useState<Record<number, number>>({});
+  // IP权限信息
+  const [isWhitelisted, setIsWhitelisted] = useState(false);
+  const [categoryPermissions, setCategoryPermissions] = useState<Record<string, boolean>>({});
 
   // 加载指标列表
   const loadMetrics = async () => {
@@ -120,6 +125,17 @@ const DataEntryModal: React.FC<DataEntryModalProps> = ({ visible, onCancel }) =>
       loadAggregationConfigs();
       setYear(new Date().getFullYear());
       setMonth(new Date().getMonth() + 1);
+      // 加载IP权限
+      getIPPermission().then(permission => {
+        setIsWhitelisted(permission.is_whitelisted);
+        const perms: Record<string, boolean> = {};
+        const categories = ['overview', 'product_a', 'product_b', 'product_c', 'product_d'];
+        for (const cat of categories) {
+          perms[cat] = permission.is_whitelisted &&
+            (permission.permissions.includes('all') || permission.permissions.includes(cat));
+        }
+        setCategoryPermissions(perms);
+      });
     }
   }, [visible, categoryFilter, dimensionFilter]);
 
@@ -138,13 +154,7 @@ const DataEntryModal: React.FC<DataEntryModalProps> = ({ visible, onCancel }) =>
       key: 'name',
       width: 150,
     },
-    {
-      title: '编码',
-      dataIndex: 'code',
-      key: 'code',
-      width: 120,
-    },
-    {
+        {
       title: '分类',
       dataIndex: 'category',
       key: 'category',
@@ -247,6 +257,22 @@ const DataEntryModal: React.FC<DataEntryModalProps> = ({ visible, onCancel }) =>
       return;
     }
 
+    // 前端权限检查：检查是否有权限修改涉及的分类
+    const metricIds = Object.keys(modifiedValues).map(id => parseInt(id));
+    const categoriesToCheck = new Set< Category>();
+    for (const metric of metrics) {
+      if (metricIds.includes(metric.id)) {
+        categoriesToCheck.add(metric.category);
+      }
+    }
+
+    for (const cat of categoriesToCheck) {
+      if (!categoryPermissions[cat]) {
+        message.error(`当前IP没有对 ${CATEGORY_CONFIG[cat]?.label} 分类指标的写权限`);
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       const records = Object.entries(modifiedValues).map(([metric_id, value]) => ({
@@ -294,11 +320,20 @@ const DataEntryModal: React.FC<DataEntryModalProps> = ({ visible, onCancel }) =>
           icon={<SaveOutlined />}
           loading={saving}
           onClick={handleSave}
+          disabled={!isWhitelisted}
         >
           保存
         </Button>,
       ]}
     >
+      {!isWhitelisted && (
+        <Alert
+          message="当前IP没有写权限，无法录入数据"
+          type="warning"
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+      )}
       <Card size="small" style={{ marginBottom: 16 }}>
         <Row gutter={16} align="middle">
           <Col span={8}>

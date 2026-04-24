@@ -50,7 +50,18 @@
       "Bash(git push *)",
       "Bash(git pull *)",
       "Bash(git stash *)",
-      "Bash(sqlite3 *)"
+      "Bash(sqlite3 *)",
+      "Bash(ipconfig)",
+      "Bash(findstr \":80 \")",
+      "Bash(findstr \"LISTENING\")",
+      "Bash(netsh advfirewall *)",
+      "Bash(npm start *)",
+      "Bash(pkill -f \"react-scripts start\")",
+      "Bash(netstat -ano)",
+      "Bash(findstr \":8000\")",
+      "Bash(set REACT_APP_API_URL=http://localhost:8000)",
+      "Bash(findstr \":3000\")",
+      "Bash(PORT=3001 npm start)"
     ]
   }
 }

@@ -1,7 +1,7 @@
 """
 指标管理 API 路由（统一 POST）
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import Optional
 
@@ -28,6 +28,7 @@ from app.schemas import (
     SourceMetricOption,
 )
 from app.crud import MetricCRUD, MetricHistoryCRUD, AggregationCRUD
+from app.auth import ip_whitelist_dependency
 
 router = APIRouter(prefix="/api/metrics", tags=["指标管理"])
 
@@ -38,6 +39,7 @@ VALID_CATEGORIES = ['overview', 'product_a', 'product_b', 'product_c', 'product_
 @router.post("/create", response_model=MetricResponse, summary="创建指标")
 async def create_metric(
     metric: MetricCreateWithAggregation,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """
@@ -51,6 +53,11 @@ async def create_metric(
     - **value**: 当前值
     - **source_configs**: 来源指标配置（仅 overview 指标支持，可选）
     """
+    # IP写权限校验
+    from app.auth import check_ip_write_permission
+    if not check_ip_write_permission(request, metric.category.value):
+        raise HTTPException(status_code=403, detail="当前IP没有对该分类指标的写权限")
+
     # 检查编码是否已存在
     existing = MetricCRUD.get_by_code(db, metric.code)
     if existing:
@@ -138,6 +145,7 @@ async def get_monthly_history(
 @router.post("/history/batch", summary="批量写入月度历史")
 async def batch_create_history(
     records: list[MetricHistoryCreate],
+    http_request: Request,
     db: Session = Depends(get_db)
 ):
     """批量创建或更新月度历史记录"""
@@ -151,6 +159,19 @@ async def batch_create_history(
     invalid_ids = set(metric_ids) - set(metric_map.keys())
     if invalid_ids:
         raise HTTPException(status_code=400, detail=f"无效的 metric_id: {invalid_ids}")
+
+    # IP写权限校验 - 检查所有涉及的指标分类
+    from app.auth import get_ip_whitelist_manager, get_client_ip
+    client_ip = get_client_ip(http_request)
+    manager = get_ip_whitelist_manager()
+
+    categories = set(metric.category for metric in metrics.values())
+    for category in categories:
+        if not manager.has_write_permission(client_ip, category):
+            raise HTTPException(
+                status_code=403,
+                detail=f"当前IP没有对 {category} 分类指标的写权限"
+            )
 
     # 检查 overview 指标是否配置了聚合来源（配置了则禁止手动录入）
     for record in records:
@@ -233,6 +254,7 @@ async def get_metric(
 @router.post("/update", response_model=MetricResponse, summary="更新指标")
 async def update_metric(
     request: MetricUpdateRequest,
+    http_request: Request,
     db: Session = Depends(get_db)
 ):
     """
@@ -240,6 +262,16 @@ async def update_metric(
 
     只需提供需要更新的字段
     """
+    # 获取现有的指标
+    existing_metric = MetricCRUD.get_by_id(db, request.id)
+    if not existing_metric:
+        raise HTTPException(status_code=404, detail="指标不存在")
+
+    # IP写权限校验
+    from app.auth import check_ip_write_permission
+    if not check_ip_write_permission(http_request, existing_metric.category):
+        raise HTTPException(status_code=403, detail="当前IP没有对该分类指标的写权限")
+
     # 如果更新编码，检查是否重复
     if request.code:
         existing = MetricCRUD.get_by_code(db, request.code)
@@ -290,9 +322,20 @@ async def update_metric(
 @router.post("/delete", summary="删除指标")
 async def delete_metric(
     request: MetricDeleteRequest,
+    http_request: Request,
     db: Session = Depends(get_db)
 ):
     """删除指定指标"""
+    # 获取指标信息用于权限校验
+    metric = MetricCRUD.get_by_id(db, request.id)
+    if not metric:
+        raise HTTPException(status_code=404, detail="指标不存在")
+
+    # IP写权限校验
+    from app.auth import check_ip_write_permission
+    if not check_ip_write_permission(http_request, metric.category):
+        raise HTTPException(status_code=403, detail="当前IP没有对该分类指标的写权限")
+
     success = MetricCRUD.delete(db, request.id)
     if not success:
         raise HTTPException(status_code=404, detail="指标不存在")
@@ -302,6 +345,7 @@ async def delete_metric(
 @router.post("/batch-update", summary="批量更新指标值")
 async def batch_update_values(
     updates: dict[str, float],
+    http_request: Request,
     db: Session = Depends(get_db)
 ):
     """
@@ -309,6 +353,27 @@ async def batch_update_values(
 
     请求体格式: {"指标编码": 新值, ...}
     """
+    # IP写权限校验 - 检查所有涉及的指标分类
+    from app.auth import get_ip_whitelist_manager, get_client_ip
+    client_ip = get_client_ip(http_request)
+    manager = get_ip_whitelist_manager()
+
+    # 获取所有涉及的指标分类
+    metric_codes = list(updates.keys())
+    categories = set()
+    for code in metric_codes:
+        metric = MetricCRUD.get_by_code(db, code)
+        if metric:
+            categories.add(metric.category)
+
+    # 检查是否有权限更新所有涉及的分类
+    for category in categories:
+        if not manager.has_write_permission(client_ip, category):
+            raise HTTPException(
+                status_code=403,
+                detail=f"当前IP没有对 {category} 分类指标的写权限"
+            )
+
     count = MetricCRUD.batch_update_values(db, updates)
     return {"code": 200, "message": f"成功更新 {count} 个指标"}
 
@@ -351,6 +416,7 @@ async def get_source_metric_options(
 @router.post("/aggregation/config/create", response_model=AggregationConfigResponse, summary="创建聚合配置")
 async def create_aggregation_config(
     config: AggregationConfigCreate,
+    http_request: Request,
     db: Session = Depends(get_db)
 ):
     """
@@ -368,6 +434,11 @@ async def create_aggregation_config(
         raise HTTPException(status_code=404, detail="目标指标不存在")
     if target_metric.category != 'overview':
         raise HTTPException(status_code=400, detail="目标指标必须是overview类别")
+
+    # IP写权限校验（聚合配置是针对overview指标的）
+    from app.auth import check_ip_write_permission
+    if not check_ip_write_permission(http_request, 'overview'):
+        raise HTTPException(status_code=403, detail="当前IP没有对overview分类指标的写权限")
 
     # 检查源指标是否存在且为子产品类别
     source_metric = MetricCRUD.get_by_id(db, config.source_metric_id)
@@ -414,9 +485,25 @@ async def list_aggregation_configs(
 @router.post("/aggregation/config/delete", summary="删除聚合配置")
 async def delete_aggregation_config(
     request: AggregationConfigDeleteRequest,
+    http_request: Request,
     db: Session = Depends(get_db)
 ):
     """删除指定的聚合配置"""
+    # 获取聚合配置信息用于权限校验
+    config = AggregationCRUD.get_by_id(db, request.id)
+    if not config:
+        raise HTTPException(status_code=404, detail="聚合配置不存在")
+
+    # 获取目标指标信息
+    target_metric = MetricCRUD.get_by_id(db, config.target_metric_id)
+    if not target_metric:
+        raise HTTPException(status_code=404, detail="目标指标不存在")
+
+    # IP写权限校验（聚合配置是针对overview指标的）
+    from app.auth import check_ip_write_permission
+    if not check_ip_write_permission(http_request, target_metric.category):
+        raise HTTPException(status_code=403, detail="当前IP没有对overview分类指标的写权限")
+
     success = AggregationCRUD.delete(db, request.id)
     if not success:
         raise HTTPException(status_code=404, detail="聚合配置不存在")

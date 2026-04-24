@@ -1,0 +1,18 @@
+# IP白名单配置
+# - 白名单IP拥有写权限（非白名单IP仅有查看权限）
+# - permissions 支持: all, overview, product_a, product_b, product_c, product_d
+# - 修改此文件无需重启服务
+
+whitelist:
+  # 测试环境IP（仅用于本地测试）
+  - ip: "127.0.0.1"
+    permissions:
+      - all  # 拥有所有指标的写权限
+  - ip: "172.27.240.1"
+    permissions:
+      - all  # 局域网IP测试
+  # 示例：
+  # - ip: "10.0.0.50"
+  #   permissions:
+  #     - product_a  # 仅能操作导购产品指标
+  #     - product_b  # 仅能操作交易产品指标

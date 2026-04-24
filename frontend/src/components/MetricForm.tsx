@@ -42,6 +42,7 @@ interface MetricFormProps {
   metric?: Metric | null;
   onCancel: () => void;
   onSubmit: (data: MetricFormData) => Promise<void>;
+  categoryPermissions?: Record<string, boolean>; // 各分类的写权限
 }
 
 const MetricForm: React.FC<MetricFormProps> = ({
@@ -49,6 +50,7 @@ const MetricForm: React.FC<MetricFormProps> = ({
   metric,
   onCancel,
   onSubmit,
+  categoryPermissions = {},
 }) => {
   const [form] = Form.useForm();
   const isEdit = !!metric;
@@ -243,6 +245,13 @@ const MetricForm: React.FC<MetricFormProps> = ({
   // 是否配置了聚合来源（有来源时禁止手动编辑数据）
   const hasSourceConfigs = selectedCategory === 'overview' && selectedSourceIds.length > 0;
 
+  // 是否有当前分类的写权限
+  const hasCategoryPermission = () => {
+    const category = selectedCategory || metric?.category;
+    if (!category) return false;
+    return categoryPermissions[category] === true;
+  };
+
   // 获取源指标名称
   const getSourceName = (id: number) => {
     const source = sourceOptions.find(s => s.id === id);
@@ -254,7 +263,8 @@ const MetricForm: React.FC<MetricFormProps> = ({
       title={isEdit ? '编辑指标' : '新增指标'}
       open={visible}
       onCancel={onCancel}
-      onOk={handleSubmit}
+      onOk={hasCategoryPermission() ? handleSubmit : () => message.error('当前IP没有对该分类指标的写权限')}
+      okButtonProps={!hasCategoryPermission() ? { disabled: true } : undefined}
       width={750}
       destroyOnClose
     >

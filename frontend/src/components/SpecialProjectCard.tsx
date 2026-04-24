@@ -8,6 +8,7 @@ import { SpecialProject, PROJECT_STATUS_CONFIG } from '../types/specialProject';
 import { specialProjectApi } from '../services/specialProjectApi';
 import BudgetProgressBar from './BudgetProgressBar';
 import SpecialProjectForm from './SpecialProjectForm';
+import { getIPPermission } from '../services/ipAuth';
 
 const { Text } = Typography;
 
@@ -20,6 +21,14 @@ const SpecialProjectCard: React.FC<SpecialProjectCardProps> = ({ year }) => {
   const [projects, setProjects] = useState<SpecialProject[]>([]);
   const [formVisible, setFormVisible] = useState(false);
   const [editingProject, setEditingProject] = useState<SpecialProject | null>(null);
+  const [canWrite, setCanWrite] = useState(false);
+
+  useEffect(() => {
+    // 检查IP写权限
+    getIPPermission().then(permission => {
+      setCanWrite(permission.is_whitelisted);
+    });
+  }, []);
 
   useEffect(() => {
     loadProjects();
@@ -38,16 +47,28 @@ const SpecialProjectCard: React.FC<SpecialProjectCardProps> = ({ year }) => {
   };
 
   const handleCreate = () => {
+    if (!canWrite) {
+      message.error('当前IP没有写权限');
+      return;
+    }
     setEditingProject(null);
     setFormVisible(true);
   };
 
   const handleEdit = (project: SpecialProject) => {
+    if (!canWrite) {
+      message.error('当前IP没有写权限');
+      return;
+    }
     setEditingProject(project);
     setFormVisible(true);
   };
 
   const handleDelete = async (project: SpecialProject) => {
+    if (!canWrite) {
+      message.error('当前IP没有写权限');
+      return;
+    }
     Modal.confirm({
       title: '确认删除',
       content: `确定要删除项目"${project.sub_project}"吗？此操作将同时删除所有关联目标。`,
@@ -165,11 +186,11 @@ const SpecialProjectCard: React.FC<SpecialProjectCardProps> = ({ year }) => {
       fixed: 'right' as const,
       render: (_: any, record: SpecialProject) => (
         <Space size="small">
-          <Tooltip title="编辑">
-            <Button type="text" size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)} />
+          <Tooltip title={canWrite ? "编辑" : "无写权限"}>
+            <Button type="text" size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)} disabled={!canWrite} />
           </Tooltip>
-          <Tooltip title="删除">
-            <Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record)} />
+          <Tooltip title={canWrite ? "删除" : "无写权限"}>
+            <Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record)} disabled={!canWrite} />
           </Tooltip>
         </Space>
       ),
@@ -181,9 +202,11 @@ const SpecialProjectCard: React.FC<SpecialProjectCardProps> = ({ year }) => {
       title={
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>专项项目</span>
-          <Button type="primary" size="small" icon={<PlusOutlined />} onClick={handleCreate}>
-            新增项目
-          </Button>
+          {canWrite && (
+            <Button type="primary" size="small" icon={<PlusOutlined />} onClick={handleCreate}>
+              新增项目
+            </Button>
+          )}
         </div>
       }
       style={{ marginBottom: 16 }}

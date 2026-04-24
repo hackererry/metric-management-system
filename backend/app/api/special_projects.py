@@ -1,7 +1,7 @@
 """
 专项项目 API 路由（统一 POST）
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -25,8 +25,17 @@ from app.schemas.special_project import (
     SpecialProjectTargetProgressRequest,
 )
 from app.crud.special_project import SpecialProjectCRUD, SpecialProjectTargetCRUD
+from app.auth import get_ip_whitelist_manager, get_client_ip
 
 router = APIRouter(prefix="/api/special-projects", tags=["专项项目管理"])
+
+
+def check_ip_write_permission(request: Request) -> None:
+    """校验IP写权限，如无权限则抛出HTTPException"""
+    client_ip = get_client_ip(request)
+    manager = get_ip_whitelist_manager()
+    if not manager.is_whitelisted(client_ip):
+        raise HTTPException(status_code=403, detail=f"IP {client_ip} 没有写权限")
 
 
 def build_project_response(project: SpecialProject) -> SpecialProjectResponse:
@@ -45,6 +54,7 @@ def build_project_response(project: SpecialProject) -> SpecialProjectResponse:
 @router.post("/create", response_model=SpecialProjectResponse, summary="创建专项项目")
 async def create_project(
     project: SpecialProjectCreate,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """
@@ -57,6 +67,9 @@ async def create_project(
     - **status**: 项目状态
     - **targets**: 目标列表（可选，支持多目标）
     """
+    # IP写权限校验
+    check_ip_write_permission(request)
+
     db_project = SpecialProjectCRUD.create(db, project)
     return build_project_response(db_project)
 
@@ -103,6 +116,7 @@ async def get_project(
 @router.post("/update", response_model=SpecialProjectResponse, summary="更新专项项目")
 async def update_project(
     request: SpecialProjectUpdateRequest,
+    http_request: Request,
     db: Session = Depends(get_db)
 ):
     """
@@ -110,6 +124,9 @@ async def update_project(
 
     只需提供需要更新的字段
     """
+    # IP写权限校验
+    check_ip_write_permission(http_request)
+
     # 构建 SpecialProjectUpdate 对象（排除 id）
     update_data = request.model_dump(exclude={'id'}, exclude_unset=True)
     project_update = SpecialProjectUpdate(**update_data)
@@ -124,9 +141,13 @@ async def update_project(
 @router.post("/delete", summary="删除专项项目")
 async def delete_project(
     request: SpecialProjectDeleteRequest,
+    http_request: Request,
     db: Session = Depends(get_db)
 ):
     """删除指定专项项目（级联删除目标）"""
+    # IP写权限校验
+    check_ip_write_permission(http_request)
+
     success = SpecialProjectCRUD.delete(db, request.id)
     if not success:
         raise HTTPException(status_code=404, detail="专项项目不存在")
@@ -136,9 +157,13 @@ async def delete_project(
 @router.post("/budget/update", response_model=SpecialProjectResponse, summary="更新预算使用")
 async def update_budget_used(
     request: SpecialProjectBudgetUpdateRequest,
+    http_request: Request,
     db: Session = Depends(get_db)
 ):
     """更新项目预算使用人天"""
+    # IP写权限校验
+    check_ip_write_permission(http_request)
+
     updated = SpecialProjectCRUD.update_budget_used(db, request.id, request.used_days)
     if not updated:
         raise HTTPException(status_code=404, detail="专项项目不存在")
@@ -151,9 +176,13 @@ async def update_budget_used(
 @router.post("/targets/create", response_model=SpecialProjectTargetResponse, summary="创建目标")
 async def create_target(
     request: SpecialProjectTargetCreateRequest,
+    http_request: Request,
     db: Session = Depends(get_db)
 ):
     """为专项项目创建新目标"""
+    # IP写权限校验
+    check_ip_write_permission(http_request)
+
     project = SpecialProjectCRUD.get_by_id(db, request.project_id)
     if not project:
         raise HTTPException(status_code=404, detail="专项项目不存在")
@@ -171,9 +200,13 @@ async def create_target(
 @router.post("/targets/update", response_model=SpecialProjectTargetResponse, summary="更新目标")
 async def update_target(
     request: SpecialProjectTargetUpdateRequest,
+    http_request: Request,
     db: Session = Depends(get_db)
 ):
     """更新目标"""
+    # IP写权限校验
+    check_ip_write_permission(http_request)
+
     db_target = SpecialProjectTargetCRUD.get_by_id(db, request.target_id)
     if not db_target or db_target.project_id != request.project_id:
         raise HTTPException(status_code=404, detail="目标不存在")
@@ -188,9 +221,13 @@ async def update_target(
 @router.post("/targets/delete", summary="删除目标")
 async def delete_target(
     request: SpecialProjectTargetDeleteRequest,
+    http_request: Request,
     db: Session = Depends(get_db)
 ):
     """删除指定目标"""
+    # IP写权限校验
+    check_ip_write_permission(http_request)
+
     db_target = SpecialProjectTargetCRUD.get_by_id(db, request.target_id)
     if not db_target or db_target.project_id != request.project_id:
         raise HTTPException(status_code=404, detail="目标不存在")
@@ -202,9 +239,13 @@ async def delete_target(
 @router.post("/targets/progress", response_model=SpecialProjectTargetResponse, summary="更新目标进度")
 async def update_target_progress(
     request: SpecialProjectTargetProgressRequest,
+    http_request: Request,
     db: Session = Depends(get_db)
 ):
     """更新目标当前值，自动计算达成率"""
+    # IP写权限校验
+    check_ip_write_permission(http_request)
+
     db_target = SpecialProjectTargetCRUD.get_by_id(db, request.target_id)
     if not db_target or db_target.project_id != request.project_id:
         raise HTTPException(status_code=404, detail="目标不存在")

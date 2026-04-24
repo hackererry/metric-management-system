@@ -50,6 +50,8 @@ def client(db_session):
     app.dependency_overrides[get_db] = override_get_db
 
     with TestClient(app) as test_client:
+        # 测试时使用白名单IP，避免IP权限校验阻断测试
+        test_client.headers["X-Forwarded-For"] = "192.168.1.100"
         yield test_client
 
     app.dependency_overrides.clear()
