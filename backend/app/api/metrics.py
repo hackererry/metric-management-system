@@ -165,7 +165,7 @@ async def batch_create_history(
     client_ip = get_client_ip(http_request)
     manager = get_ip_whitelist_manager()
 
-    categories = set(metric.category for metric in metrics.values())
+    categories = set(metric.category for metric in metrics)
     for category in categories:
         if not manager.has_write_permission(client_ip, category):
             raise HTTPException(

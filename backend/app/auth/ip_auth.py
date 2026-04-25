@@ -2,21 +2,56 @@
 IP白名单权限认证模块
 - 白名单IP拥有写权限（非白名单IP仅有查看权限）
 - 支持细粒度权限控制：all, overview, product_a, product_b, product_c, product_d
+- 支持单IP、IP列表、CIDR网段三种配置形式
 - 配置文件支持热更新，无需重启服务
 """
-import os
+import ipaddress
 from pathlib import Path
 from typing import Optional, List
 
 import yaml
 from fastapi import HTTPException, Request, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class IPWhitelistEntry(BaseModel):
-    """IP白名单条目"""
-    ip: str
-    permissions: List[str]  # ["all"] 或 ["product_a", "product_b"] 等
+    """IP白名单条目 - 支持单IP、IP列表、CIDR三种形式"""
+    ip: Optional[str] = None           # 单IP（向后兼容）
+    ips: Optional[List[str]] = None   # IP列表
+    cidr: Optional[str] = None        # CIDR网段
+    permissions: List[str]            # ["all"] 或 ["product_a", "product_b"] 等
+
+    @field_validator("permissions", mode="before")
+    @classmethod
+    def parse_permissions(cls, v):
+        if isinstance(v, str):
+            return [v]
+        return v
+
+    def get_ips(self) -> List[str]:
+        """展开为IP列表"""
+        result = []
+        if self.ip:
+            result.append(self.ip)
+        if self.ips:
+            result.extend(self.ips)
+        if self.cidr:
+            result.extend(self._parse_cidr(self.cidr))
+        return result
+
+    @staticmethod
+    def _parse_cidr(cidr_str: str) -> List[str]:
+        """解析CIDR网段为IP列表"""
+        try:
+            network = ipaddress.ip_network(cidr_str, strict=False)
+            return [str(ip) for ip in network.hosts()]
+        except ValueError:
+            return []
+
+    def model_post_init(self, __context):
+        # 校验至少指定了一种IP形式
+        if not self.ip and not self.ips and not self.cidr:
+            raise ValueError("必须指定 ip、ips 或 cidr 之一")
 
 
 class IPWhitelistConfig(BaseModel):
@@ -70,9 +105,38 @@ class IPWhitelistManager:
         if not self._config:
             return []
 
+        try:
+            target_ip = ipaddress.ip_address(ip)
+        except ValueError:
+            return []
+
         for entry in self._config.whitelist:
-            if entry.ip == ip:
-                return entry.permissions
+            # 检查单IP
+            if entry.ip:
+                try:
+                    if target_ip == ipaddress.ip_address(entry.ip):
+                        return entry.permissions
+                except ValueError:
+                    pass
+
+            # 检查IP列表
+            if entry.ips:
+                for entry_ip_str in entry.ips:
+                    try:
+                        if target_ip == ipaddress.ip_address(entry_ip_str):
+                            return entry.permissions
+                    except ValueError:
+                        pass
+
+            # 检查CIDR网段
+            if entry.cidr:
+                try:
+                    network = ipaddress.ip_network(entry.cidr, strict=False)
+                    if target_ip in network:
+                        return entry.permissions
+                except ValueError:
+                    pass
+
         return []
 
     def has_write_permission(self, ip: str, category: Optional[str] = None) -> bool:

@@ -1,18 +1,28 @@
 # IP白名单配置
 # - 白名单IP拥有写权限（非白名单IP仅有查看权限）
 # - permissions 支持: all, overview, product_a, product_b, product_c, product_d
+# - 支持三种配置形式：单IP(ip)、IP列表(ips)、CIDR网段(cidr)
 # - 修改此文件无需重启服务
 
 whitelist:
-  # 测试环境IP（仅用于本地测试）
+  # 单IP形式（向后兼容）
   - ip: "127.0.0.1"
     permissions:
       - all  # 拥有所有指标的写权限
-  - ip: "172.27.240.1"
+
+  # IP列表形式
+  - ips:
+      - "172.18.0.1"
     permissions:
       - all  # 局域网IP测试
-  # 示例：
-  # - ip: "10.0.0.50"
+
+  # CIDR网段形式（支持整个网段）
+  # - cidr: "172.18.0.0/24"
+  #   permissions:
+  #     - all  # 172.18.0.x 整个网段
+
+  # 示例：按分类细粒度控制
+  # - cidr: "10.0.0.0/8"
   #   permissions:
   #     - product_a  # 仅能操作导购产品指标
   #     - product_b  # 仅能操作交易产品指标

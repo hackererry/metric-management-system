@@ -62,7 +62,7 @@ const DataEntryModal: React.FC<DataEntryModalProps> = ({ visible, onCancel }) =>
     setLoading(true);
     try {
       const response = await metricApi.getList({ skip: 0, limit: 1000 });
-      let items = response.items;
+      let items = response.items.filter((m: Metric) => m.is_active !== false);
       if (categoryFilter) {
         items = items.filter(m => m.category === categoryFilter);
       }
