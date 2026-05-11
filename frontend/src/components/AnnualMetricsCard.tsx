@@ -2,9 +2,10 @@
  * 年度指标展示卡片 - 按维度分组展示overview类别指标
  */
 import React, { useEffect, useState } from 'react';
-import { Card, Row, Col, Table, Typography, Tag, Spin, message, Tooltip, Radio, Collapse } from 'antd';
+import { Card, Row, Col, Table, Typography, Tag, Spin, message, Tooltip, Radio, Collapse, Select } from 'antd';
 import { CheckCircleOutlined, ExclamationCircleOutlined, CloseCircleOutlined, MinusOutlined } from '@ant-design/icons';
 import { ArrowUpOutlined, ArrowDownOutlined, LinkOutlined } from '@ant-design/icons';
+import { CalendarOutlined } from '@ant-design/icons';
 import { metricApi } from '../services/api';
 import { Metric, MetricGroupedResponse, Dimension, DIMENSION_CONFIG, MonthlyHistoryMap } from '../types';
 import MonthlyLineChart from './MonthlyLineChart';
@@ -19,6 +20,7 @@ import {
 } from '../styles/theme';
 
 const { Text } = Typography;
+const { Option } = Select;
 
 // 补全 URL 协议前缀
 const normalizeUrl = (url: string | null | undefined): string | null => {
@@ -32,6 +34,8 @@ const normalizeUrl = (url: string | null | undefined): string | null => {
 interface AnnualMetricsCardProps {
   year: number;
   month?: number | null;
+  onYearChange: (year: number) => void;
+  onMonthChange: (month: number | null) => void;
   overviewMetrics?: MetricGroupedResponse;
   overviewHistory?: MonthlyHistoryMap;
 }
@@ -45,7 +49,7 @@ const DIMENSION_LABELS: Record<Dimension, string> = {
   operation: '运作',
 };
 
-const AnnualMetricsCard: React.FC<AnnualMetricsCardProps> = ({ year, month, overviewMetrics, overviewHistory }) => {
+const AnnualMetricsCard: React.FC<AnnualMetricsCardProps> = ({ year, month, onYearChange, onMonthChange, overviewMetrics, overviewHistory }) => {
   const [loading, setLoading] = useState(true);
   const [metricsData, setMetricsData] = useState<Metric[]>([]);
   const [monthlyHistory, setMonthlyHistory] = useState<MonthlyHistoryMap>({});
@@ -647,9 +651,44 @@ const AnnualMetricsCard: React.FC<AnnualMetricsCardProps> = ({ year, month, over
   return (
     <Card
       title={
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <span style={{ marginRight: SPACING.xxl }}>{`产品部指标 - ${year}年${month ? month + '月' : '度'}`}</span>
-          {getDimensionStatusCircles()}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <span style={{ marginRight: SPACING.xxl }}>{`产品部指标 - ${year}年${month ? month + '月' : '度'}`}</span>
+            {getDimensionStatusCircles()}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <CalendarOutlined style={{ color: '#8c8c8c' }} />
+            <Select
+              value={year}
+              onChange={onYearChange}
+              style={{ width: 100 }}
+            >
+              <Option value={2023}>2023年</Option>
+              <Option value={2024}>2024年</Option>
+              <Option value={2025}>2025年</Option>
+              <Option value={2026}>2026年</Option>
+            </Select>
+            <Select
+              value={month}
+              onChange={onMonthChange}
+              style={{ width: 80 }}
+              allowClear
+              placeholder="全部"
+            >
+              <Option value={1}>1月</Option>
+              <Option value={2}>2月</Option>
+              <Option value={3}>3月</Option>
+              <Option value={4}>4月</Option>
+              <Option value={5}>5月</Option>
+              <Option value={6}>6月</Option>
+              <Option value={7}>7月</Option>
+              <Option value={8}>8月</Option>
+              <Option value={9}>9月</Option>
+              <Option value={10}>10月</Option>
+              <Option value={11}>11月</Option>
+              <Option value={12}>12月</Option>
+            </Select>
+          </div>
         </div>
       }
       style={{ marginBottom: SPACING.base }}

@@ -1,5 +1,5 @@
 /**
- * 维度月度视图组件 - 支持三种展示模式：当月数据、12月列表、12月折线图
+ * 维度月度视图组件 - 支持三种展示模式：月度数据、12月列表、12月折线图
  */
 import React, { useState } from 'react';
 import { Card, Table, Tag, Radio, Typography, Empty } from 'antd';
@@ -23,6 +23,7 @@ interface DimensionMonthlyViewProps {
   metrics: Metric[];
   monthlyData: MonthlyHistoryMap;
   year: number;
+  month?: number | null;
 }
 
 type ViewMode = 'current' | 'table' | 'chart';
@@ -32,13 +33,15 @@ const DimensionMonthlyView: React.FC<DimensionMonthlyViewProps> = ({
   metrics,
   monthlyData,
   year,
+  month,
 }) => {
   const [viewMode, setViewMode] = useState<ViewMode>('current');
 
   const config = DIMENSION_CONFIG[dimension];
 
-  // 当月数据列定义
-  const currentMonth = new Date().getMonth() + 1;
+  // 月度数据列定义
+  // 当 month 有值时显示指定月份数据，为 null 时显示当前月
+  const displayMonth = month !== null && month !== undefined ? month : new Date().getMonth() + 1;
   const currentColumns = [
     {
       title: '指标名称',
@@ -59,7 +62,7 @@ const DimensionMonthlyView: React.FC<DimensionMonthlyViewProps> = ({
       key: 'value',
       width: 120,
       render: (_: any, record: Metric) => {
-        const data = monthlyData[record.code]?.[currentMonth];
+        const data = monthlyData[record.code]?.[displayMonth];
         const historyData = data !== undefined ? (typeof data === 'object' ? data : { value: data, data_source_link: null }) : null;
         const dataSourceLink = normalizeUrl(historyData?.data_source_link || record.data_source_link);
         const value = data !== undefined ? (typeof data === 'object' ? data.value : data) : undefined;
@@ -156,7 +159,9 @@ const DimensionMonthlyView: React.FC<DimensionMonthlyViewProps> = ({
             value={viewMode}
             onChange={(e) => setViewMode(e.target.value)}
           >
-            <Radio.Button value="current">当月数据</Radio.Button>
+            <Radio.Button value="current">
+              {month !== null && month !== undefined ? `${month}月数据` : '年度数据'}
+            </Radio.Button>
             <Radio.Button value="table">表格</Radio.Button>
             <Radio.Button value="chart">折线图</Radio.Button>
           </Radio.Group>

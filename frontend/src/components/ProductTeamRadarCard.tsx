@@ -68,16 +68,32 @@ const calculateRealTeamData = (
     operation: [],
   };
 
-  const currentMonthValue = month || new Date().getMonth() + 1;
+  const useFullYear = month === null;
 
   metrics.forEach(m => {
     if (!m.target_value) return;
-    const data = monthlyData[m.code]?.[currentMonthValue];
-    const value = data !== undefined ? (typeof data === 'object' ? data.value : data) : undefined;
-    if (value === undefined) return;
 
-    const met = m.lower_is_better ? value <= m.target_value : value >= m.target_value;
-    dimensionScores[m.dimension].push(met ? 100 : 50);
+    if (useFullYear) {
+      // 全年聚合：检查每个月的达标情况，计算平均分
+      const monthlyScores: number[] = [];
+      for (let monthIdx = 1; monthIdx <= 12; monthIdx++) {
+        const data = monthlyData[m.code]?.[monthIdx];
+        const value = data !== undefined ? (typeof data === 'object' ? data.value : data) : undefined;
+        if (value !== undefined) {
+          const met = m.lower_is_better ? value <= m.target_value : value >= m.target_value;
+          monthlyScores.push(met ? 100 : 50);
+        }
+      }
+      const avg = monthlyScores.length ? monthlyScores.reduce((a, b) => a + b, 0) / monthlyScores.length : 0;
+      dimensionScores[m.dimension].push(Math.round(avg));
+    } else {
+      const currentMonthValue = month || new Date().getMonth() + 1;
+      const data = monthlyData[m.code]?.[currentMonthValue];
+      const value = data !== undefined ? (typeof data === 'object' ? data.value : data) : undefined;
+      if (value === undefined) return;
+      const met = m.lower_is_better ? value <= m.target_value : value >= m.target_value;
+      dimensionScores[m.dimension].push(met ? 100 : 50);
+    }
   });
 
   const calcAvg = (arr: number[]) => arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : 0;
@@ -199,9 +215,13 @@ const ProductTeamRadarCard: React.FC<ProductTeamRadarCardProps> = ({
         <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.sm }}>
           <span style={{ color, fontSize: FONT_SIZES.lg }}>●</span>
           <span style={{ fontWeight: 500, color: COLORS.text }}>{label}</span>
-          {month && (
+          {month !== null ? (
             <Text type="secondary" style={{ fontSize: FONT_SIZES.sm }}>
               {year}年{month}月
+            </Text>
+          ) : (
+            <Text type="secondary" style={{ fontSize: FONT_SIZES.sm }}>
+              全年汇总
             </Text>
           )}
         </div>

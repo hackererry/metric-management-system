@@ -3,9 +3,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import { Row, Col, Card, message, Divider, Typography, Empty, Select } from 'antd';
-import {
-  CalendarOutlined,
-} from '@ant-design/icons';
+import { CalendarOutlined } from '@ant-design/icons';
 import { Category, MetricGroupedResponse, Dimension, DIMENSION_CONFIG, MonthlyHistoryMap } from '../types';
 import { metricApi } from '../services/api';
 import AnnualMetricsCard from '../components/AnnualMetricsCard';
@@ -25,9 +23,11 @@ const TEAM_CONFIG: Record<string, { label: string; color: string }> = {
 };
 
 const Dashboard: React.FC = () => {
-  const currentMonth = new Date().getMonth() + 1;
   const [year, setYear] = useState(2026);
-  const [month, setMonth] = useState<number | null>(currentMonth);
+  const [productYear, setProductYear] = useState(2026);
+  const [productMonth, setProductMonth] = useState<number | null>(null);
+  const [teamYear, setTeamYear] = useState(2026);
+  const [teamMonth, setTeamMonth] = useState<number | null>(null);
   const [allMetrics, setAllMetrics] = useState<Partial<Record<Category, MetricGroupedResponse>>>({});
   const [monthlyHistory, setMonthlyHistory] = useState<Partial<Record<Category, MonthlyHistoryMap>>>({});
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
@@ -68,7 +68,7 @@ const Dashboard: React.FC = () => {
     const totalCount = allTeamMetrics.length;
 
     // 从 monthlyHistory 获取当前值来计算统计
-    const currentMonth = month || new Date().getMonth() + 1;
+    const currentMonth = teamMonth || new Date().getMonth() + 1;
     const normalCount = allTeamMetrics.filter(m => {
       const data = history?.[m.code]?.[currentMonth];
       const value = data !== undefined ? (typeof data === 'object' ? data.value : data) : undefined;
@@ -87,53 +87,19 @@ const Dashboard: React.FC = () => {
 
   return (
     <div>
-      {/* 页面标题和年度筛选 */}
+      {/* 页面标题 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <Title level={4} style={{ margin: 0 }}>
           指标看板总览
         </Title>
-        <div>
-          <CalendarOutlined style={{ marginRight: 6, color: '#8c8c8c' }} />
-          <Select
-            value={year}
-            onChange={(val) => {
-              setYear(val);
-              setMonth(null);
-            }}
-            style={{ width: 100 }}
-          >
-            <Option value={2023}>2023年</Option>
-            <Option value={2024}>2024年</Option>
-            <Option value={2025}>2025年</Option>
-            <Option value={2026}>2026年</Option>
-          </Select>
-          <Select
-            value={month}
-            onChange={setMonth}
-            style={{ width: 80, marginLeft: 8 }}
-            allowClear
-            placeholder="全部"
-          >
-            <Option value={1}>1月</Option>
-            <Option value={2}>2月</Option>
-            <Option value={3}>3月</Option>
-            <Option value={4}>4月</Option>
-            <Option value={5}>5月</Option>
-            <Option value={6}>6月</Option>
-            <Option value={7}>7月</Option>
-            <Option value={8}>8月</Option>
-            <Option value={9}>9月</Option>
-            <Option value={10}>10月</Option>
-            <Option value={11}>11月</Option>
-            <Option value={12}>12月</Option>
-          </Select>
-        </div>
       </div>
 
       {/* 年度指标展示卡片 */}
       <AnnualMetricsCard
-        year={year}
-        month={month}
+        year={productYear}
+        month={productMonth}
+        onYearChange={setProductYear}
+        onMonthChange={setProductMonth}
         overviewMetrics={allMetrics.overview}
         overviewHistory={monthlyHistory.overview}
       />
@@ -148,13 +114,11 @@ const Dashboard: React.FC = () => {
             <Title level={5} style={{ margin: 0 }}>
               子产品团队指标
             </Title>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <CalendarOutlined style={{ color: '#8c8c8c' }} />
               <Select
-                value={year}
-                onChange={(val) => {
-                  setYear(val);
-                  setMonth(currentMonth);
-                }}
+                value={teamYear}
+                onChange={setTeamYear}
                 style={{ width: 100 }}
               >
                 <Option value={2023}>2023年</Option>
@@ -163,9 +127,11 @@ const Dashboard: React.FC = () => {
                 <Option value={2026}>2026年</Option>
               </Select>
               <Select
-                value={month}
-                onChange={setMonth}
+                value={teamMonth}
+                onChange={setTeamMonth}
                 style={{ width: 80 }}
+                allowClear
+                placeholder="全部"
               >
                 <Option value={1}>1月</Option>
                 <Option value={2}>2月</Option>
@@ -196,8 +162,8 @@ const Dashboard: React.FC = () => {
                   teamKey={key}
                   label={config.label}
                   color={config.color}
-                  year={year}
-                  month={month}
+                  year={teamYear}
+                  month={teamMonth}
                   isSelected={isSelected}
                   onClick={() => setSelectedTeam(isSelected ? null : key)}
                   metrics={allMetrics[key as Category] ? Object.values(allMetrics[key as Category] || {}).flat() : []}
@@ -225,7 +191,8 @@ const Dashboard: React.FC = () => {
                   dimension={dim}
                   metrics={dimMetrics}
                   monthlyData={selectedHistory || {}}
-                  year={year}
+                  year={teamYear}
+                  month={teamMonth}
                 />
               );
             })}
